@@ -1,0 +1,174 @@
+const DAY = 24 * 60 * 60 * 1000;
+const weekdays = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 日: 7, 天: 7 };
+const chineseNumbers = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+const fixedWords = /面试|开会|会议|上课|考试|预约|聚餐|电话|看医生|复诊|高铁|航班|约见|见面/;
+
+function numberOf(value) {
+  if (/^\d+(?:\.\d+)?$/.test(value)) return Number(value);
+  if (value === '半') return 0.5;
+  if (value.startsWith('十')) return 10 + (chineseNumbers[value[1]] || 0);
+  return chineseNumbers[value] || 0;
+}
+
+function localDate(date) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function at(date, hours, minutes = 0) {
+  const result = new Date(date);
+  result.setHours(hours, minutes, 0, 0);
+  return result;
+}
+
+function dateFromWords(text, now) {
+  const date = at(now, 0);
+  const absolute = text.match(/(\d{1,2})月(\d{1,2})[日号]?/);
+  if (absolute) {
+    const month = Number(absolute[1]) - 1;
+    const day = Number(absolute[2]);
+    const candidate = new Date(now.getFullYear(), month, day);
+    if (candidate.getMonth() !== month || candidate.getDate() !== day) return null;
+    if (candidate.getTime() < date.getTime() - DAY) candidate.setFullYear(candidate.getFullYear() + 1);
+    return candidate;
+  }
+  if (text.includes('大后天')) date.setDate(date.getDate() + 3);
+  else if (text.includes('后天')) date.setDate(date.getDate() + 2);
+  else if (text.includes('明天')) date.setDate(date.getDate() + 1);
+  else if (text.includes('今天')) return date;
+  else {
+    const match = text.match(/(下周|本周|这周|周|星期)([一二三四五六日天])/);
+    if (!match) return null;
+    const current = (date.getDay() + 6) % 7 + 1;
+    const target = weekdays[match[2]];
+    let shift = target - current;
+    if (match[1] === '下周') shift += 7;
+    else if (match[1] === '周' || match[1] === '星期') {
+      if (shift < 0) shift += 7;
+    }
+    date.setDate(date.getDate() + shift);
+  }
+  return date;
+}
+
+function timeFromWords(text) {
+  const match = text.match(/(凌晨|早上|上午|中午|下午|傍晚|晚上)?\s*(\d{1,2}|[一二两三四五六七八九十]+)(?:点|:|：)(半|\d{1,2})?/);
+  if (!match) return null;
+  let hour = numberOf(match[2]);
+  let minute = match[3] === '半' ? 30 : Number(match[3] || 0);
+  if (hour > 23 || minute > 59) return null;
+  if (/下午|傍晚|晚上/.test(match[1] || '') && hour < 12) hour += 12;
+  if (/凌晨|早上|上午/.test(match[1] || '') && hour === 12) hour = 0;
+  if (match[1] === '中午' && hour < 11) hour += 12;
+  return { hour, minute };
+}
+
+function durationFromWords(text) {
+  const hour = text.match(/(\d+(?:\.\d+)?|[一二两三四五六七八九十]+|半)个?小时/);
+  const minute = text.match(/(\d+|[一二两三四五六七八九十]+)分钟/);
+  if (!hour && !minute) return null;
+  const value = (hour ? numberOf(hour[1]) * 60 : 0) + (minute ? numberOf(minute[1]) : 0);
+  return Math.max(10, Math.min(value, 480));
+}
+
+function usefulTitle(fragment) {
+  return fragment.replace(/^(然后|另外|还有|而且|我还|我|要|得|需要|记得|提醒我|帮我)+/g, '').trim() || fragment.trim();
+}
+
+export function parseCapture(raw, now = new Date()) {
+  const fragments = raw.replace(/(?:另外|还有|然后)(?=[^，。；\n]{3,})/g, '；')
+    .split(/[\n。；;，,]+/).map((item) => item.trim()).filter(Boolean).slice(0, 12);
+  const actionable = fragments.filter((item) => !/^(我)?(好焦虑|有点焦虑|很乱|不知道怎么办|压力好大|好烦|害怕|有点不知道先做哪个)$/.test(item));
+  if (!actionable.length) return [{ title: '写下一件最担心的具体事项', kind: 'task', time: '', duration: 10, inferred: true }];
+  return actionable.map((fragment) => {
+    const date = dateFromWords(fragment, now);
+    const time = timeFromWords(fragment);
+    const fixed = fixedWords.test(fragment) && Boolean(date || time);
+    let when = date;
+    if (!when && time) {
+      when = at(now, 0);
+      if (at(when, time.hour, time.minute) < now) when.setDate(when.getDate() + 1);
+    }
+    if (when) {
+      const defaultHour = fixed ? 9 : 18;
+      when = at(when, time?.hour ?? defaultHour, time?.minute ?? 0);
+    }
+    const duration = durationFromWords(fragment);
+    return {
+      title: usefulTitle(fragment),
+      kind: fixed ? 'event' : 'task',
+      time: when ? `${localDate(when)}T${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')}` : '',
+      duration: duration || (fixed ? 60 : 45),
+      inferred: !date || !duration || (!time && fixed),
+    };
+  });
+}
+
+function windowsFor(day) {
+  return [[9, 0, 12, 0], [13, 0, 18, 0], [19, 0, 21, 0]].map(([h1, m1, h2, m2]) => [at(day, h1, m1), at(day, h2, m2)]);
+}
+
+function overlap(start, end, busyStart, busyEnd) {
+  return start < busyEnd && end > busyStart;
+}
+
+export function planTasks(input, now = new Date()) {
+  const tasks = input.map((item) => ({ ...item }));
+  const horizon = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+  const busy = [];
+  for (const task of tasks) {
+    if (task.status !== 'pending') { task.scheduledAt = null; continue; }
+    if (task.kind === 'event' && task.fixedAt) {
+      task.scheduledAt = task.fixedAt;
+      task.plannedMinutes = task.estimateMinutes;
+      const start = new Date(task.fixedAt);
+      busy.push([start, new Date(start.getTime() + task.estimateMinutes * 60000)]);
+    } else {
+      task.scheduledAt = null;
+      task.plannedMinutes = Math.min(task.remainingMinutes || task.estimateMinutes, 90);
+    }
+  }
+  const flexible = tasks.filter((item) => item.status === 'pending' && item.kind === 'task');
+  flexible.sort((a, b) => {
+    const aa = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+    const bb = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+    return aa - bb || a.createdAt.localeCompare(b.createdAt);
+  });
+  const dailyMinutes = new Map();
+  for (const task of flexible) {
+    const minutes = task.plannedMinutes;
+    for (let offset = 0; offset < 4 && !task.scheduledAt; offset++) {
+      const day = at(now, 0); day.setDate(day.getDate() + offset);
+      const key = localDate(day);
+      if ((dailyMinutes.get(key) || 0) + minutes > 240) continue;
+      for (const [windowStart, windowEnd] of windowsFor(day)) {
+        let cursor = new Date(Math.max(windowStart.getTime(), now.getTime(), task.notBefore ? new Date(task.notBefore).getTime() : 0));
+        cursor = new Date(Math.ceil(cursor.getTime() / 900000) * 900000);
+        while (cursor.getTime() + minutes * 60000 <= windowEnd.getTime()) {
+          const end = new Date(cursor.getTime() + minutes * 60000);
+          if (end > horizon || (task.deadline && end > new Date(task.deadline))) break;
+          const conflict = busy.find(([from, to]) => overlap(cursor, end, from, to));
+          if (!conflict) {
+            task.scheduledAt = cursor.toISOString();
+            dailyMinutes.set(key, (dailyMinutes.get(key) || 0) + minutes);
+            busy.push([cursor, new Date(end.getTime() + 15 * 60000)]);
+            break;
+          }
+          cursor = new Date(Math.ceil(conflict[1].getTime() / 900000) * 900000);
+        }
+        if (task.scheduledAt) break;
+      }
+    }
+  }
+  return tasks;
+}
+
+export function formatDateTime(value, options = {}) {
+  if (!value) return '尚未指定';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '尚未指定';
+  return new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false, ...options }).format(date);
+}
+
+export function dayKey(value) { return localDate(new Date(value)); }
+export function timeLabel(value) { return new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value)); }

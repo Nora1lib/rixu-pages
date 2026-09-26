@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#102a43" />
+    <meta name="description" content="日序帮你把眼前的事情理清，先走下一步。" />
+    <title>日序 · 今天先做什么</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23102a43'/%3E%3Ccircle cx='23' cy='22' r='8' fill='%23f3d58a'/%3E%3Cpath d='M15 40h34M15 49h25' stroke='%23fffaf0' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="日序首页"><span class="brand-mark" aria-hidden="true"><i></i><b></b><b></b></span><span>日序</span></a>
+        <div class="topbar-right"><span id="todayLabel" class="today-label"></span><button id="settingsButton" class="text-button" type="button">设置与数据</button></div>
+      </header>
+
+      <main>
+        <section class="primary-grid" aria-label="整理与下一步">
+          <div class="capture-card">
+            <div class="eyebrow"><span class="eyebrow-line"></span> 先把事情说出来</div>
+            <h1>脑子里有点乱？<br /><span>从这里开始。</span></h1>
+            <p class="capture-intro">不用分类或想好顺序。把想起的事、截止时间和顾虑写下来就好。</p>
+            <label class="sr-only" for="captureInput">输入你想整理的事情</label>
+            <textarea id="captureInput" rows="6" placeholder="例如：周五有面试，作品集还没改完；明天下午要给导师回邮件，我有点不知道先做哪个……"></textarea>
+            <div class="capture-actions"><button id="voiceButton" class="secondary-button" type="button" aria-label="语音输入">◉ <span>语音输入</span></button><button id="organizeButton" class="primary-button" type="button">整理并安排 <span aria-hidden="true">→</span></button></div>
+            <p id="captureMessage" class="field-note" role="status">内容只保存在当前设备。安排前，你可以逐项确认。</p>
+          </div>
+
+          <aside class="next-card" aria-labelledby="nextTitle">
+            <div class="section-kicker"><span class="small-sun" aria-hidden="true"></span> 现在的下一步</div>
+            <div id="nextStep" class="next-content"><h2 id="nextTitle">先从一件小事开始</h2><p>写下你最近要处理的事，日序会帮你理出可执行的第一步。</p></div>
+            <div id="nextActions" class="next-actions" hidden></div>
+            <p class="quiet-note">计划会留有空白，也可以随时调整。</p>
+          </aside>
+        </section>
+
+        <section id="reviewSection" class="review-card" aria-labelledby="reviewTitle" hidden>
+          <div class="section-head"><div><span class="overline">整理结果</span><h2 id="reviewTitle">请确认这些事项</h2></div><button id="discardDraftButton" class="text-button" type="button">取消本次整理</button></div>
+          <p class="section-description">日期和时长可能是初步推测。重要时间请确认后再加入计划。</p>
+          <div id="draftList" class="draft-list"></div>
+          <div class="review-footer"><button id="confirmDraftButton" class="primary-button" type="button">加入近期计划 <span aria-hidden="true">→</span></button></div>
+        </section>
+
+        <section class="lower-grid" aria-label="近期计划">
+          <div class="schedule-card">
+            <div class="section-head"><div><span class="overline">未来 72 小时</span><h2>近期安排</h2></div><span id="planCount" class="count-pill">0 项</span></div>
+            <div id="scheduleList" class="schedule-list"><div class="empty-state">还没有安排。写下一件事，计划就从这里展开。</div></div>
+          </div>
+          <div class="tasks-card">
+            <div class="section-head"><div><span class="overline">不必一次做完</span><h2>待处理事项</h2></div><span id="taskCount" class="count-pill">0 项</span></div>
+            <div id="taskList" class="task-list"><div class="empty-state">没有待处理事项。</div></div>
+            <button id="restoreButton" class="text-button restore-button" type="button" hidden>撤销上一步</button>
+          </div>
+        </section>
+      </main>
+
+      <footer class="page-footer"><span>日序 · 给计划留一点余地</span><span>本地优先 · 无账号 · 无广告</span></footer>
+    </div>
+
+    <dialog id="settingsDialog" class="settings-dialog" aria-labelledby="settingsTitle">
+      <form method="dialog" class="settings-content"><div class="section-head"><div><span class="overline">由你决定</span><h2 id="settingsTitle">设置与数据</h2></div><button class="icon-button" value="cancel" aria-label="关闭设置">×</button></div>
+        <label class="setting-row"><span><strong>安静提醒</strong><small>只在页面打开时显示临近事项，不发出声音。</small></span><input id="reminderToggle" type="checkbox" checked /></label>
+        <div class="settings-buttons"><button id="exportButton" class="secondary-button" type="button">导出数据</button><label class="secondary-button import-label">导入数据<input id="importInput" type="file" accept="application/json,.json" hidden /></label></div>
+        <button id="clearButton" class="danger-button" type="button">清空本机数据</button>
+        <p class="field-note">当前版本在此设备保存计划，没有账号或跨设备同步。建议定期导出备份。</p>
+      </form>
+    </dialog>
+    <dialog id="changesDialog" class="settings-dialog" aria-labelledby="changesTitle">
+      <div class="settings-content">
+        <span class="overline">计划变化</span>
+        <h2 id="changesTitle">这些安排会调整</h2>
+        <p class="section-description">请确认变更；加入后仍可撤销。</p>
+        <ul id="changesList" class="changes-list"></ul>
+        <div class="dialog-actions">
+          <button id="changesCancelButton" class="secondary-button" type="button">返回修改</button>
+          <button id="changesConfirmButton" class="primary-button" type="button">确认新计划</button>
+        </div>
+      </div>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>
