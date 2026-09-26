@@ -4,3 +4,44 @@
 @media(max-width:430px){.date-line strong{font-size:2.12rem}.date-line span{font-size:1.1rem}.date-detail{font-size:.78rem}.date-icon{width:38px;height:38px;flex-basis:38px}.capture-row{grid-template-columns:minmax(0,1fr) 42px 110px;gap:6px}.capture-row textarea{padding:10px;font-size:.86rem}.navy-button{font-size:.79rem;padding:5px}.schedule-head{align-items:flex-start}.work-summary{max-width:125px;white-space:normal}.mango-strip svg{width:15px;height:18px}.quest-dialog-inner{padding:14px 13px 10px}.quest-banner{gap:5px}.quest-lead strong{font-size:1.1rem}.bottom-nav a,.bottom-nav button{font-size:.69rem}}
 .quest-dialog::backdrop{background:linear-gradient(rgba(5,18,41,.36),rgba(5,18,41,.61)),url("./assets/night-landscape.png") center center/cover no-repeat}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+/* Functional views and controls */
+body[data-view="today"] .tasks-card{display:none}
+body[data-view="journey"] .next-card,body[data-view="journey"] .capture-card,body[data-view="journey"] .schedule-card,body[data-view="journey"] .tasks-card{display:none}
+body[data-view="schedule"] .next-card,body[data-view="schedule"] .capture-card,body[data-view="schedule"] .journey-panel,body[data-view="schedule"] .tasks-card{display:none}
+body[data-view="inbox"] .next-card,body[data-view="inbox"] .capture-card,body[data-view="inbox"] .schedule-card,body[data-view="inbox"] .journey-panel{display:none}
+body[data-view="schedule"] #scheduleMoreButton{display:none}
+body[data-view="today"] .journey-actions{display:none}
+body[data-view="today"] .journey-card.side .journey-progress,body[data-view="today"] .journey-card.side .journey-next{display:none}
+body[data-view="today"] .journey-card.side{min-height:88px}
+.work-summary{border:0;background:transparent;padding:5px 0;cursor:pointer;font-family:inherit}
+.work-summary:hover{text-decoration:underline}
+.journey-heading .journey-create{margin-left:auto;border:1px solid #e8c372;background:transparent;color:#fff4d0;padding:7px 9px;font-size:.78rem;font-weight:750}
+.journey-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.journey-actions button{border:1px solid #abc0ce;background:#e8eff3;color:#1e4f83;padding:5px 9px;font-size:.8rem;font-weight:750}
+.inbox-subsection{border-top:1px solid #ddd9d1;margin-top:18px;padding-top:12px}
+.inbox-subsection h3,.inbox-subsection summary{color:#1b4678;font-size:1rem;font-weight:800;margin:0 0 6px}
+.inbox-subsection summary{cursor:pointer}
+.subsection-empty{color:#7c879a;font-size:.83rem;margin:6px 0}
+.completed-item{color:#4b718d;font-size:.88rem;margin:7px 0;padding:6px;border-bottom:1px solid #ece8e0}
+.deferred-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #ece8e0}
+.deferred-row p{margin:0;color:#1f365a;overflow-wrap:anywhere}
+.deferred-row small{color:#78869a}
+.deferred-row button{border:1px solid #b0c0ce;background:#eaf0f3;color:#1b5085;padding:7px 9px;white-space:nowrap}
+.daily-item.skipped{color:#78869a}
+.form-field{display:grid;gap:5px;color:#234367;font-size:.88rem;font-weight:750;margin-top:14px}
+.form-field input,.form-field select{width:100%;height:46px;border:1.5px solid #b7c6d3;background:#fffef9;color:#173256;padding:8px 10px;min-width:0}
+.form-submit{display:block;width:100%;margin-top:20px}
+.focus-content{text-align:center}
+.focus-content .section-head{text-align:left}
+.focus-task-title{font-size:1.18rem;font-weight:800;color:#112e58}
+.focus-clock{font-family:ui-monospace,SFMono-Regular,monospace;font-size:clamp(2.7rem,12vw,4.5rem);letter-spacing:.08em;color:#112e58;text-shadow:2px 2px #e8bf67;margin:12px 0}
+.focus-actions{display:grid;gap:10px}
+.draft-item{grid-template-columns:repeat(3,minmax(0,1fr))}
+.draft-item label:first-child{grid-column:span 2}
+.draft-item label:nth-child(4){grid-column:auto}
+.draft-item .remove-draft{align-self:end}
+@media(max-width:650px){.draft-item{grid-template-columns:repeat(2,minmax(0,1fr))}.draft-item label:first-child{grid-column:1/-1}.draft-item label:nth-child(4){grid-column:1/-1}.journey-heading .journey-create{font-size:.72rem;padding:5px}.deferred-row{align-items:flex-start}.deferred-row p{font-size:.85rem}}
+.milestone-list{border-top:1px solid #d9d7cf;margin-top:10px;padding-top:6px}
+.milestone-row{display:flex;align-items:center;gap:8px;padding:6px 0;color:#27466b;font-size:.88rem;cursor:pointer}
+.milestone-row input{width:18px;height:18px;accent-color:#317e70}
+body[data-view="today"] .milestone-list{display:none}

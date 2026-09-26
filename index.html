@@ -43,17 +43,21 @@
         <p id="captureMessage" class="field-note" role="status">可以打字或语音输入，加入计划前会请你确认。</p>
       </section>
       <section class="schedule-card paper-frame" id="schedule" aria-labelledby="scheduleTitle">
-        <div class="section-head schedule-head"><div class="section-title"><svg aria-hidden="true"><use href="#i-calendar"/></svg><h2 id="scheduleTitle">今天与未来 72 小时</h2></div><div id="workSummary" class="work-summary" aria-label="今日预计工作时间与忙碌度"></div></div>
+        <div class="section-head schedule-head"><div class="section-title"><svg aria-hidden="true"><use href="#i-calendar"/></svg><h2 id="scheduleTitle">今天与未来 72 小时</h2></div><button id="workSummary" class="work-summary" type="button" aria-label="查看今日预计工作时间与忙碌度"></button></div>
         <div id="scheduleList" class="schedule-list"></div><div id="dailyList" class="daily-list"></div>
-        <button id="scheduleMoreButton" class="section-link" type="button">查看全部待处理事项 <span aria-hidden="true">›</span></button>
+        <button id="scheduleMoreButton" class="section-link" type="button">查看完整日程 <span aria-hidden="true">›</span></button>
       </section>
       <section class="journey-panel" id="journey" aria-labelledby="journeyTitle">
-        <div class="journey-heading"><svg aria-hidden="true"><use href="#i-mountain"/></svg><h2 id="journeyTitle">长期旅程</h2></div><div id="journeyList" class="journey-list"></div>
+        <div class="journey-heading"><svg aria-hidden="true"><use href="#i-mountain"/></svg><h2 id="journeyTitle">长期旅程</h2><button id="newJourneyButton" class="journey-create" type="button">＋ 新建旅程</button></div><div id="journeyList" class="journey-list"></div>
       </section>
       <section class="tasks-card paper-frame" id="inbox" aria-labelledby="taskTitle">
         <div class="section-head"><div class="section-title"><svg aria-hidden="true"><use href="#i-box"/></svg><h2 id="taskTitle">收纳箱</h2></div><span id="taskCount" class="count-pill">0 项</span></div>
         <p class="section-description">所有已确认的事项都在这里，可修改、顺延或删除。</p>
-        <div id="taskList" class="task-list"></div><button id="restoreButton" class="section-link" type="button" hidden>撤销上一步</button>
+        <div id="taskList" class="task-list"></div>
+        <div class="inbox-subsection"><h3>稍后整理</h3><div id="deferredList"></div></div>
+        <div class="inbox-subsection"><h3>过时奇遇 · 回顾</h3><div id="expiredList"></div></div>
+        <details class="inbox-subsection"><summary>已完成事项</summary><div id="completedList"></div></details>
+        <button id="restoreButton" class="section-link" type="button" hidden>撤销上一步</button>
       </section>
     </main>
     <footer class="page-footer">计划只保存在这台设备上 · 日序</footer>
@@ -68,10 +72,40 @@
   <dialog id="reviewSection" class="quest-dialog" aria-labelledby="reviewTitle">
     <div class="quest-dialog-inner">
       <div class="quest-banner"><span aria-hidden="true">✦</span><h2 id="reviewTitle">奇遇任务出现了</h2><span aria-hidden="true">✦</span></div>
-      <div class="quest-scroll"><p id="questTiming" class="quest-timing"></p><div id="questLead" class="quest-lead"></div><div class="quest-suggestion"><h3>✦ 日序建议</h3><p>先核对任务名称、时间和预计时长。确认后再加入计划。</p></div><p class="section-description">这次整理出的事项</p><div id="draftList" class="draft-list"></div></div>
+      <div class="quest-scroll"><p id="questTiming" class="quest-timing"></p><div id="questLead" class="quest-lead"></div><div class="quest-suggestion"><h3>✦ 日序建议</h3><p id="questSuggestion">先核对任务名称、时间和预计时长。确认后再加入计划。</p></div><p class="section-description">这次整理出的事项</p><div id="draftList" class="draft-list"></div></div>
       <div class="review-footer"><button id="confirmDraftButton" class="gold-button" type="button">接受安排</button><button id="discardDraftButton" class="light-button" type="button">先放一放</button><p>未确认的内容不会加入计划</p></div>
     </div>
   </dialog>
+  <dialog id="journeyDialog" class="settings-dialog" aria-labelledby="journeyDialogTitle">
+    <form id="journeyForm" class="settings-content"><div class="section-head"><h2 id="journeyDialogTitle">新建长期旅程</h2><button class="icon-button dialog-close" type="button" aria-label="关闭">×</button></div>
+      <label class="form-field">旅程名称<input id="journeyNameInput" type="text" maxlength="80" required placeholder="例如：找到合适的下一份工作"></label>
+      <label class="form-field">类型<select id="journeyKindInput"><option value="main">主线任务</option><option value="side">支线任务</option></select></label>
+      <label class="form-field">第一个路标（可稍后添加）<input id="journeyFirstMilestone" type="text" maxlength="180" placeholder="例如：整理作品集目录"></label>
+      <button class="gold-button form-submit" type="submit">保存旅程</button>
+    </form>
+  </dialog>
+  <dialog id="milestoneDialog" class="settings-dialog" aria-labelledby="milestoneDialogTitle">
+    <form id="milestoneForm" class="settings-content"><div class="section-head"><h2 id="milestoneDialogTitle">添加下一路标</h2><button class="icon-button dialog-close" type="button" aria-label="关闭">×</button></div>
+      <label class="form-field">要推进的一步<input id="milestoneTitle" type="text" maxlength="180" required placeholder="例如：完成作品集首页初稿"></label>
+      <label class="form-field">预计分钟<input id="milestoneMinutes" type="number" min="10" max="480" step="5" value="45"></label>
+      <button class="gold-button form-submit" type="submit">加入旅程</button>
+    </form>
+  </dialog>
+  <dialog id="taskEditDialog" class="settings-dialog" aria-labelledby="taskEditTitle">
+    <form id="taskEditForm" class="settings-content"><div class="section-head"><h2 id="taskEditTitle">修改事项</h2><button class="icon-button dialog-close" type="button" aria-label="关闭">×</button></div>
+      <label class="form-field">名称<input id="editTitle" type="text" maxlength="180" required></label>
+      <label class="form-field">安排方式<select id="editKind"><option value="task">可调整任务</option><option value="event">固定事项</option></select></label>
+      <label class="form-field">任务类型<select id="editQuestType"><option value="normal">短期任务</option><option value="main">主线</option><option value="side">支线</option><option value="daily">每日任务</option></select></label>
+      <label class="form-field">所属旅程<input id="editJourneyName" type="text" maxlength="80" list="journeyOptions" placeholder="主线或支线填写旅程名称"></label>
+      <datalist id="journeyOptions"></datalist>
+      <label class="form-field">优先级<select id="editPriority"><option value="auto">自动判断</option><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label>
+      <label class="form-field">截止或固定时间<input id="editTime" type="datetime-local"></label>
+      <label class="form-field">预计分钟<input id="editMinutes" type="number" min="10" max="480" step="5"></label>
+      <button class="gold-button form-submit" type="submit">保存修改</button>
+    </form>
+  </dialog>
+  <dialog id="focusDialog" class="settings-dialog" aria-labelledby="focusTitle"><div class="settings-content focus-content"><div class="section-head"><h2 id="focusTitle">开始这一段</h2><button class="icon-button dialog-close" type="button" aria-label="关闭">×</button></div><p id="focusTaskTitle" class="focus-task-title"></p><div id="focusClock" class="focus-clock" aria-live="off">00:00</div><p class="section-description">专注结束后再标记完成；中途离开也不会自动算作完成。</p><div class="focus-actions"><button id="focusToggleButton" class="gold-button" type="button">开始计时</button><button id="focusCompleteButton" class="light-button" type="button">完成这一段</button></div></div></dialog>
+  <dialog id="busyDialog" class="settings-dialog" aria-labelledby="busyTitle"><div class="settings-content"><div class="section-head"><h2 id="busyTitle">今日忙碌度</h2><button class="icon-button dialog-close" type="button" aria-label="关闭">×</button></div><p id="busyExplanation" class="section-description"></p></div></dialog>
   <dialog id="settingsDialog" class="settings-dialog" aria-labelledby="settingsTitle">
     <form method="dialog" class="settings-content"><div class="section-head"><h2 id="settingsTitle">设置与数据</h2><button class="icon-button" value="cancel" aria-label="关闭设置">×</button></div>
       <label class="setting-row"><span><strong>背景时间</strong><small>跟随当前时间，或手动选择远足与扎营。</small></span><select id="themeSelect"><option value="auto">自动切换</option><option value="day">白天 · 远足</option><option value="night">夜间 · 扎营</option></select></label>

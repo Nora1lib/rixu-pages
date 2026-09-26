@@ -43,7 +43,7 @@ function dateFromWords(text, now) {
     const target = weekdays[match[2]];
     let shift = target - current;
     if (match[1] === '下周') shift += 7;
-    else if (match[1] === '周' || match[1] === '星期') {
+    else if (['本周', '这周', '周', '星期'].includes(match[1])) {
       if (shift < 0) shift += 7;
     }
     date.setDate(date.getDate() + shift);
@@ -72,18 +72,21 @@ function durationFromWords(text) {
 }
 
 function usefulTitle(fragment) {
-  return fragment.replace(/^(然后|另外|还有|而且|我还|我|要|得|需要|记得|提醒我|帮我)+/g, '').trim() || fragment.trim();
+  const cleaned = fragment.replace(/^(然后|另外|还有|而且|我还|我|要|得|需要|记得|提醒我|帮我)+/g, '')
+    .replace(/[，,\s]*(?:预计|大概|约)\s*(?:\d+(?:\.\d+)?|[一二两三四五六七八九十]+|半)个?(?:小时|分钟)\s*$/g, '').trim();
+  return cleaned || fragment.trim();
 }
 
 export function parseCapture(raw, now = new Date()) {
-  const fragments = raw.replace(/(?:另外|还有|然后)(?=[^，。；\n]{3,})/g, '；')
+  const prepared = raw.replace(/[，,](?=\s*(?:预计|大概|约)\s*(?:\d|[一二两三四五六七八九十半]))/g, ' ');
+  const fragments = prepared.replace(/(?:另外|还有|然后)(?=[^，。；\n]{3,})/g, '；')
     .split(/[\n。；;，,]+/).map((item) => item.trim()).filter(Boolean).slice(0, 12);
   const actionable = fragments.filter((item) => !/^(我)?(好焦虑|有点焦虑|很乱|不知道怎么办|压力好大|好烦|害怕|有点不知道先做哪个)$/.test(item));
   if (!actionable.length) return [{ title: '写下一件最担心的具体事项', kind: 'task', time: '', duration: 10, inferred: true }];
   return actionable.map((fragment) => {
     const date = dateFromWords(fragment, now);
     const time = timeFromWords(fragment);
-    const fixed = fixedWords.test(fragment) && Boolean(date || time);
+    const fixed = fixedWords.test(fragment) && Boolean(date || time) && !/回复|邮件|准备|整理|记录|复盘|修改|写|做|完成/.test(fragment);
     let when = date;
     if (!when && time) {
       when = at(now, 0);
@@ -117,7 +120,9 @@ export function planTasks(input, now = new Date()) {
   const horizon = new Date(now.getTime() + 72 * 60 * 60 * 1000);
   const busy = [];
   for (const task of tasks) {
-    if (task.status !== 'pending') { task.scheduledAt = null; continue; }
+    if (task.status !== 'pending' || task.questType === 'daily' || (task.kind === 'task' && task.deadline && new Date(task.deadline) < now)) {
+      task.scheduledAt = null; continue;
+    }
     if (task.kind === 'event' && task.fixedAt) {
       task.scheduledAt = task.fixedAt;
       task.plannedMinutes = task.estimateMinutes;
@@ -128,11 +133,12 @@ export function planTasks(input, now = new Date()) {
       task.plannedMinutes = Math.min(task.remainingMinutes || task.estimateMinutes, 90);
     }
   }
-  const flexible = tasks.filter((item) => item.status === 'pending' && item.kind === 'task');
+  const flexible = tasks.filter((item) => item.status === 'pending' && item.kind === 'task' && item.questType !== 'daily' && (!item.deadline || new Date(item.deadline) >= now));
   flexible.sort((a, b) => {
     const aa = a.deadline ? new Date(a.deadline).getTime() : Infinity;
     const bb = b.deadline ? new Date(b.deadline).getTime() : Infinity;
-    return aa - bb || a.createdAt.localeCompare(b.createdAt);
+    const priority = (task) => task.priority === 'high' ? 0 : task.priority === 'medium' ? 1 : task.priority === 'low' ? 3 : task.questType === 'main' ? 0 : task.questType === 'side' ? 1 : 2;
+    return aa - bb || priority(a) - priority(b) || a.createdAt.localeCompare(b.createdAt);
   });
   const dailyMinutes = new Map();
   for (const task of flexible) {
