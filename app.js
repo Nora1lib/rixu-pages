@@ -199,7 +199,7 @@ function renderSchedule() {
       group.append(make("div", "day-label", new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "long" }).format(date)));
       host.append(group);
     }
-    const row = make("div", "schedule-item");
+    const row = make("div", "schedule-item " + (task.kind === "event" ? "event" : isAdventure(task) ? "adventure" : "flexible"));
     const info = make("div");
     info.append(make("div", "schedule-title", task.title));
     const detail = task.kind === "event" ? "已保护的固定时间" : questOf(task) + " · 预计 " + task.plannedMinutes + " 分钟";
@@ -242,8 +242,9 @@ function renderJourneys() {
     const done = tasks.filter((task) => task.status === "done").length;
     const pending = tasks.find((task) => task.status === "pending" && !isExpiredAdventure(task));
     const card = make("article", "journey-card " + type);
-    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    const use = document.createElementNS("http://www.w3.org/2000/svg", "use"); use.setAttribute("href", type === "main" ? "#i-mountain" : "#i-sprout"); icon.append(use);
+    const icon = type === "main" ? make("img", "journey-icon") : document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    if (type === "main") { icon.src = "./assets/quest-mountain-flag.png"; icon.alt = ""; }
+    else { const use = document.createElementNS("http://www.w3.org/2000/svg", "use"); use.setAttribute("href", "#i-sprout"); icon.append(use); }
     const info = make("div");
     info.append(make("h3", "", questLabels[type] + "｜" + journey.title));
     const percent = tasks.length ? Math.round(done / tasks.length * 100) : 0;
@@ -724,19 +725,68 @@ $("#clearButton").addEventListener("click", () => {
   commit(defaults(), "本机数据已清空，可在本次会话中撤销。");
   $("#settingsDialog").close();
 });
-$("#voiceButton").addEventListener("click", () => {
+let activeRecognition = null;
+function voiceState(listening, message) {
+  const control = $("#voiceButton");
+  control.classList.toggle("listening", listening);
+  control.setAttribute("aria-pressed", String(listening));
+  control.setAttribute("aria-label", listening ? "结束语音输入" : "开始语音输入");
+  control.textContent = listening ? "■" : "🎙";
+  $("#captureMessage").textContent = message;
+}
+$("#voiceButton").addEventListener("click", async () => {
+  if (activeRecognition) { activeRecognition.stop(); return; }
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) { $("#captureMessage").textContent = "当前浏览器不支持语音转写，可以直接输入文字。"; return; }
+  if (!window.isSecureContext || !SpeechRecognition) {
+    voiceState(false, "此浏览器无法直接转写。可点输入框，用手机键盘上的麦克风口述。");
+    $("#captureInput").focus();
+    return;
+  }
   const recognition = new SpeechRecognition();
-  recognition.lang = "zh-CN"; recognition.interimResults = false;
-  $("#captureMessage").textContent = "正在听，请说出要处理的事情。";
+  activeRecognition = recognition;
+  recognition.lang = "zh-CN";
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+  let finalText = "", interimText = "", error = "";
+  let watchdog;
   recognition.onresult = (event) => {
-    const spoken = event.results?.[0]?.[0]?.transcript?.trim();
-    if (spoken) $("#captureInput").value = [$("#captureInput").value.trim(), spoken].filter(Boolean).join("；");
-    if (spoken) startCapture($("#captureInput").value);
+    finalText = ""; interimText = "";
+    for (let i = 0; i < event.results.length; i++) {
+      const result = event.results[i];
+      const words = result[0]?.transcript || "";
+      if (result.isFinal) finalText += words;
+      else interimText += words;
+    }
+    voiceState(true, finalText ? "已听到：" + finalText.trim() : "正在识别：" + interimText.trim());
   };
-  recognition.onerror = () => $("#captureMessage").textContent = "语音输入没有成功，可以重试或直接输入文字。";
-  recognition.start();
+  recognition.onerror = (event) => {
+    error = ({ "not-allowed": "麦克风权限被拒绝，请在浏览器设置中允许后重试。", "service-not-allowed": "浏览器语音服务不可用，可用手机键盘麦克风口述。", network: "语音服务连接失败，可用手机键盘麦克风口述。", "no-speech": "没有听清，请靠近麦克风再试一次。", "audio-capture": "未找到可用麦克风，请检查设备。" })[event.error] || "语音识别中断，可重试或改用键盘麦克风。";
+  };
+  recognition.onend = () => {
+    clearTimeout(watchdog);
+    if (activeRecognition !== recognition) return;
+    activeRecognition = null;
+    const spoken = (finalText || interimText).trim();
+    if (spoken) {
+      $("#captureInput").value = [$("#captureInput").value.trim(), spoken].filter(Boolean).join("；");
+      if (finalText.trim()) { voiceState(false, "识别完成，请核对内容后确认安排。"); startCapture($("#captureInput").value); }
+      else voiceState(false, "识别提前结束，已保留听到的文字。请核对后点“整理并确认”。");
+    } else voiceState(false, error || "没有识别到内容，请再试一次，或用手机键盘麦克风口述。");
+  };
+  try {
+    if (typeof SpeechRecognition.available === "function") {
+      const status = await SpeechRecognition.available({ langs: ["zh-CN"], processLocally: true }).catch(() => "unavailable");
+      if (status === "available") recognition.processLocally = true;
+    }
+    voiceState(true, "正在听，请说出要处理的事情；再次点按钮可结束。");
+    recognition.start();
+    watchdog = setTimeout(() => { if (activeRecognition === recognition) recognition.stop(); }, 20000);
+  } catch {
+    clearTimeout(watchdog);
+    activeRecognition = null;
+    voiceState(false, "无法启动语音识别，可用手机键盘麦克风口述。");
+  }
 });
 function registerWebMcp() {
   const context = document.modelContext;
