@@ -65,6 +65,7 @@
       <form method="dialog" class="settings-content"><div class="section-head"><div><span class="overline">由你决定</span><h2 id="settingsTitle">设置与数据</h2></div><button class="icon-button" value="cancel" aria-label="关闭设置">×</button></div>
         <label class="setting-row"><span><strong>安静提醒</strong><small>只在页面打开时显示临近事项，不发出声音。</small></span><input id="reminderToggle" type="checkbox" checked /></label>
         <div class="settings-buttons"><button id="exportButton" class="secondary-button" type="button">导出数据</button><label class="secondary-button import-label">导入数据<input id="importInput" type="file" accept="application/json,.json" hidden /></label></div>
+        <details class="capture-history"><summary>查看已确认的原文</summary><div id="captureHistory"></div></details>
         <button id="clearButton" class="danger-button" type="button">清空本机数据</button>
         <p class="field-note">当前版本在此设备保存计划，没有账号或跨设备同步。建议定期导出备份。</p>
       </form>

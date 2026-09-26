@@ -4,5 +4,12 @@
 .changes-list{padding-left:22px;color:#315268;max-height:220px;overflow:auto}
 .changes-list li{margin:8px 0}
 .dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.capture-history{border-top:1px solid #e7edef;border-bottom:1px solid #e7edef;padding:15px 0;margin-bottom:12px}
+.capture-history summary{cursor:pointer;color:#315268;font-weight:700}
+#captureHistory{max-height:260px;overflow:auto;padding-top:6px}
+.capture-history-item{padding:12px 0;border-bottom:1px solid #edf1f3}
+.capture-history-item:last-child{border-bottom:0}
+.capture-history-item time{color:#718894;font-size:.78rem}
+.capture-history-item p{white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0 0;color:#315268;line-height:1.6}
 @media(max-width:850px){.draft-item{grid-template-columns:1fr 1fr}.draft-item label:first-child{grid-column:1/-1}}
 @media(max-width:560px){.draft-item{grid-template-columns:1fr 1fr}.draft-item label:nth-child(3){grid-column:1/-1}.draft-item .remove-draft{align-self:end}.task-actions{margin-left:30px}}

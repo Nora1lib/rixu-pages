@@ -4,7 +4,7 @@ const $ = (selector) => document.querySelector(selector);
 const KEY = "rixu.web.v1";
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const newId = () => crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random();
-const defaults = () => ({ tasks: [], quietReminders: true });
+const defaults = () => ({ tasks: [], captures: [], quietReminders: true });
 const dateValue = (value) => value && !Number.isNaN(new Date(value).getTime()) ? value : null;
 const make = (tag, className, value) => {
   const node = document.createElement(tag);
@@ -25,17 +25,25 @@ function normalize(item) {
     notBefore: dateValue(item.notBefore), scheduledAt: dateValue(item.scheduledAt)
   };
 }
+function normalizeCapture(item) {
+  if (!item || typeof item.text !== "string" || !item.text.trim()) return null;
+  return { id: typeof item.id === "string" ? item.id : String(newId()),
+    text: item.text.slice(0, 4000), createdAt: dateValue(item.createdAt) || new Date().toISOString() };
+}
 function load() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY));
     if (!raw || !Array.isArray(raw.tasks)) return defaults();
-    return { tasks: raw.tasks.map(normalize).filter(Boolean), quietReminders: raw.quietReminders !== false };
+    return { tasks: raw.tasks.map(normalize).filter(Boolean),
+      captures: Array.isArray(raw.captures) ? raw.captures.map(normalizeCapture).filter(Boolean).slice(-200) : [],
+      quietReminders: raw.quietReminders !== false };
   } catch { return defaults(); }
 }
 let state = load();
 let drafts = [];
 let undo = null;
 let proposed = null;
+let captureText = "";
 let toastTimer;
 const reminded = new Set();
 function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
@@ -47,7 +55,7 @@ function toast(message) {
 }
 function commit(next, message) {
   undo = clone(state);
-  state = { tasks: planTasks(next.tasks), quietReminders: next.quietReminders };
+  state = { tasks: planTasks(next.tasks), captures: next.captures || [], quietReminders: next.quietReminders };
   save(); render(); toast(message);
 }
 function button(text, action, taskId) {
@@ -134,10 +142,20 @@ function renderTasks() {
     row.append(check, main, actions); host.append(row);
   }
 }
+function renderHistory() {
+  const host = $("#captureHistory"); host.replaceChildren();
+  if (!state.captures.length) { host.append(make("p", "field-note", "还没有确认过的原文记录。")); return; }
+  for (const capture of [...state.captures].reverse().slice(0, 20)) {
+    const item = make("div", "capture-history-item");
+    item.append(make("time", "", formatDateTime(capture.createdAt)));
+    item.append(make("p", "", capture.text));
+    host.append(item);
+  }
+}
 function render() {
   $("#todayLabel").textContent = new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "long" }).format(new Date());
   $("#reminderToggle").checked = state.quietReminders;
-  renderNext(); renderSchedule(); renderTasks();
+  renderNext(); renderSchedule(); renderTasks(); renderHistory();
 }
 function addField(card, label, type, value, onChange) {
   const wrap = make("label");
@@ -175,6 +193,7 @@ function renderDrafts() {
 }
 function startCapture(text = $("#captureInput").value) {
   if (!text.trim()) { $("#captureMessage").textContent = "先写下一件想处理的事。"; $("#captureInput").focus(); return 0; }
+  captureText = text.trim();
   drafts = parseCapture(text);
   renderDrafts();
   $("#reviewSection").hidden = false;
@@ -185,8 +204,9 @@ function startCapture(text = $("#captureInput").value) {
 function applyProposal() {
   if (!proposed) return;
   const count = drafts.length;
-  commit(proposed, "已加入 " + count + " 件事。你可以随时撤销。");
-  drafts = []; proposed = null;
+  const next = { ...proposed, captures: proposed.captures.concat({ id: String(newId()), text: captureText, createdAt: new Date().toISOString() }).slice(-200) };
+  commit(next, "已加入 " + count + " 件事。你可以随时撤销。");
+  drafts = []; proposed = null; captureText = "";
   $("#reviewSection").hidden = true;
   $("#captureInput").value = "";
   $("#captureMessage").textContent = "内容只保存在当前设备。安排前，你可以逐项确认。";
@@ -263,6 +283,12 @@ function editTask(taskId) {
   const parsed = input.trim() ? new Date(input.trim().replace(" ", "T")) : null;
   if (input.trim() && Number.isNaN(parsed.getTime())) { toast("时间格式不正确，修改未保存。"); return; }
   if (task.kind === "event" && !parsed) { toast("固定事项需要时间。"); return; }
+  if (task.kind === "event" && parsed < new Date(Date.now() - 60000)) { toast("固定事项不能安排在过去。"); return; }
+  if (task.kind === "event" && next.tasks.some((other) => other.id !== task.id && other.status === "pending" && other.kind === "event" &&
+    parsed.getTime() < new Date(other.fixedAt).getTime() + other.estimateMinutes * 60000 &&
+    new Date(other.fixedAt).getTime() < parsed.getTime() + task.estimateMinutes * 60000)) {
+    toast("固定事项时间冲突，修改未保存。"); return;
+  }
   task.title = title.trim().slice(0, 180);
   if (task.kind === "event") task.fixedAt = parsed.toISOString();
   else task.deadline = parsed ? parsed.toISOString() : null;
@@ -312,7 +338,9 @@ $("#importInput").addEventListener("change", async (event) => {
     const data = JSON.parse(await file.text());
     if (!Array.isArray(data.tasks) || data.tasks.some((task) => !normalize(task))) throw new Error("invalid");
     if (!confirm("将用备份中的 " + data.tasks.length + " 项事项替换本机数据，继续吗？")) return;
-    commit({ tasks: data.tasks.map(normalize), quietReminders: data.quietReminders !== false }, "备份已导入。");
+    commit({ tasks: data.tasks.map(normalize),
+      captures: Array.isArray(data.captures) ? data.captures.map(normalizeCapture).filter(Boolean).slice(-200) : [],
+      quietReminders: data.quietReminders !== false }, "备份已导入。");
     $("#settingsDialog").close();
   } catch { toast("无法读取备份文件。"); }
   event.target.value = "";
