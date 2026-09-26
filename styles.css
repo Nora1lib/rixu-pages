@@ -101,3 +101,25 @@ body[data-theme="day"] .scene:after{background:linear-gradient(180deg,rgba(12,44
 @media(max-width:650px){.app-shell{width:calc(100% - 28px)}.sky-header{height:154px;padding:39px 17px 0}.next-card{grid-template-columns:94px minmax(0,1fr);gap:8px;padding:12px 10px 11px}.hero-icon{min-height:94px}.hero-icon img{width:91px;height:91px}.next-content h1{font-size:clamp(1.55rem,6vw,2rem)}.capture-card,.schedule-card,.tasks-card{padding:11px 10px}.schedule-item{grid-template-columns:61px minmax(0,1fr);gap:8px;padding-left:22px}.schedule-time:before{left:-21px}.status-pill{grid-column:2;margin-top:0}.journey-card{grid-template-columns:54px minmax(0,1fr)}.journey-card img,.journey-card svg{width:53px;height:53px}}
 @media(max-width:430px){.date-line{gap:10px}.date-line strong{font-size:2.35rem}.date-line span{font-size:1.06rem}.date-detail{font-size:.8rem;gap:4px}.date-detail span+span:before{margin-right:4px}.date-icon{width:37px;height:37px;flex-basis:37px}.sky-header{gap:8px}.next-card{grid-template-columns:78px minmax(0,1fr)}.hero-icon img{width:77px;height:77px}.next-content h1{font-size:1.46rem}.next-meta{font-size:.75rem!important}.next-explain{font-size:.84rem!important}.capture-row{grid-template-columns:minmax(0,1fr) 39px 107px;gap:5px}.capture-row textarea{font-size:.88rem;padding:10px 7px}.work-summary{font-size:.75rem;max-width:145px}.mango-strip svg{width:15px;height:18px}.section-title h2{font-size:1.04rem}.schedule-title{font-size:.9rem}.schedule-detail{font-size:.75rem}}
 @media(prefers-reduced-motion:reduce){.voice-button.listening{animation:none}}
+
+/* Date stays in the sky; other copy keeps the approved plain sans-serif style. */
+@font-face{font-family:"ZLabs Pixel CN";src:url("./assets/zlabs-pixel-cn.woff2") format("woff2");font-style:normal;font-weight:400 900;font-display:swap}
+.date-emoji{display:flex;align-items:center;justify-content:center;font-size:2.55rem;line-height:1;filter:drop-shadow(2px 3px 0 #173b6a)}
+.date-line strong{font-family:"ZLabs Pixel CN",ui-monospace,"PingFang SC",sans-serif;font-size:clamp(2.65rem,9vw,3.8rem);line-height:1.05;letter-spacing:.03em}
+.date-line span{font-family:"ZLabs Pixel CN",ui-monospace,"PingFang SC",sans-serif}
+.date-detail{font-family:"PingFang SC","Microsoft YaHei",sans-serif;text-shadow:1px 2px 0 #0b2a59}
+.quest-dialog.has-adventure::backdrop{background:linear-gradient(rgba(5,18,41,.12),rgba(5,18,41,.28)),url("./assets/adventure-camp-night.png") center center/cover no-repeat}
+.quest-banner h2{font-size:clamp(1.65rem,6vw,2.35rem)}
+.plan-preview{margin-top:11px;padding:10px 12px;background:#f3f0eb;border-radius:10px;color:#213f69;font-size:.83rem}
+.plan-preview-title{font-weight:800;margin:0 0 5px!important}
+.plan-preview-row{display:grid;grid-template-columns:72px minmax(0,1fr) 16px 72px;gap:5px;align-items:center;padding:6px 0;border-top:1px solid #ddd8d0}
+.plan-preview-row span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plan-preview-row strong{color:#955f16}
+.plan-preview-empty{margin:0!important;color:#60718b}
+.ai-setting{padding:16px 0;border-bottom:1px solid #ded9cf}
+.ai-setting p{color:#728199;font-size:.81rem;line-height:1.5;margin:6px 0 10px}
+.ai-setting input{width:100%;height:42px;border:1px solid #b7c4d2;background:#fff;padding:8px 10px;color:#0c2a50}
+.ai-setting-actions{display:flex;gap:8px;margin:9px 0}
+.ai-setting-actions button{min-height:39px;font-size:.84rem}
+.ai-setting small{color:#55718d}
+@media(max-width:430px){.date-emoji{font-size:2.15rem}.date-line strong{font-size:2.55rem}.date-line span{font-size:1.06rem}.plan-preview-row{grid-template-columns:57px minmax(0,1fr) 13px 57px}}

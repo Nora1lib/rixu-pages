@@ -26,7 +26,7 @@
   <div class="scene" aria-hidden="true"></div>
   <div class="app-shell" id="today">
     <header class="sky-header">
-      <div class="date-icon" aria-hidden="true"><svg><use href="#i-calendar"/></svg></div>
+      <div class="date-icon date-emoji" aria-hidden="true">🗓️</div>
       <div class="date-copy"><div class="date-line"><strong id="todayLabel"></strong><span id="weekdayLabel"></span></div><div class="date-detail"><span id="lunarLabel"></span><span id="weekendLabel"></span></div></div>
     </header>
     <main>
@@ -72,8 +72,8 @@
   <dialog id="reviewSection" class="quest-dialog" aria-labelledby="reviewTitle">
     <div class="quest-dialog-inner">
       <div class="quest-banner"><span aria-hidden="true">✦</span><h2 id="reviewTitle">奇遇任务出现了</h2><span aria-hidden="true">✦</span></div>
-      <div class="quest-scroll"><p id="questTiming" class="quest-timing"></p><div id="questLead" class="quest-lead"></div><div class="quest-suggestion"><h3>✦ 日序建议</h3><p id="questSuggestion">先核对任务名称、时间和预计时长。确认后再加入计划。</p></div><p class="section-description">这次整理出的事项</p><div id="draftList" class="draft-list"></div></div>
-      <div class="review-footer"><button id="confirmDraftButton" class="gold-button" type="button">接受安排</button><button id="discardDraftButton" class="light-button" type="button">先放一放</button><p>未确认的内容不会加入计划</p></div>
+      <div class="quest-scroll"><p id="questTiming" class="quest-timing"></p><div id="questLead" class="quest-lead"></div><div class="quest-suggestion"><h3>✦ 日序建议</h3><p id="questSuggestion">先核对任务名称、时间和预计时长。确认后再加入计划。</p><div id="questPlan" class="plan-preview" hidden></div></div><p class="section-description">这次整理出的事项</p><div id="draftList" class="draft-list"></div></div>
+      <div class="review-footer"><button id="confirmDraftButton" class="gold-button" type="button">接受安排</button><button id="discardDraftButton" class="light-button" type="button">先放一放</button><p id="reviewFootnote">未确认的内容不会加入计划</p></div>
     </div>
   </dialog>
   <dialog id="journeyDialog" class="settings-dialog" aria-labelledby="journeyDialogTitle">
@@ -95,7 +95,7 @@
     <form id="taskEditForm" class="settings-content"><div class="section-head"><h2 id="taskEditTitle">修改事项</h2><button class="icon-button dialog-close" type="button" aria-label="关闭">×</button></div>
       <label class="form-field">名称<input id="editTitle" type="text" maxlength="180" required></label>
       <label class="form-field">安排方式<select id="editKind"><option value="task">可调整任务</option><option value="event">固定事项</option></select></label>
-      <label class="form-field">任务类型<select id="editQuestType"><option value="normal">短期任务</option><option value="main">主线</option><option value="side">支线</option><option value="daily">每日任务</option></select></label>
+      <label class="form-field">任务类型<select id="editQuestType"><option value="adventure">奇遇任务</option><option value="normal">短期任务</option><option value="main">主线</option><option value="side">支线</option><option value="daily">每日任务</option></select></label>
       <label class="form-field">所属旅程<input id="editJourneyName" type="text" maxlength="80" list="journeyOptions" placeholder="主线或支线填写旅程名称"></label>
       <datalist id="journeyOptions"></datalist>
       <label class="form-field">优先级<select id="editPriority"><option value="auto">自动判断</option><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label>
@@ -110,6 +110,7 @@
     <form method="dialog" class="settings-content"><div class="section-head"><h2 id="settingsTitle">设置与数据</h2><button class="icon-button" value="cancel" aria-label="关闭设置">×</button></div>
       <label class="setting-row"><span><strong>背景时间</strong><small>跟随当前时间，或手动选择远足与扎营。</small></span><select id="themeSelect"><option value="auto">自动切换</option><option value="day">白天 · 远足</option><option value="night">夜间 · 扎营</option></select></label>
       <label class="setting-row"><span><strong>安静提醒</strong><small>页面打开时显示临近事项，不发出声音。</small></span><input id="reminderToggle" type="checkbox" checked></label>
+      <div class="ai-setting"><strong>DeepSeek 智能识别</strong><p>可选。启用后，整理时只把本次输入和设备时间发给 DeepSeek。密钥仅保留在当前页面内存，刷新即清除；不会写入仓库或备份。</p><label class="sr-only" for="deepSeekKey">DeepSeek API 密钥</label><input id="deepSeekKey" type="password" autocomplete="off" spellcheck="false" placeholder="在此输入 DeepSeek API 密钥"><div class="ai-setting-actions"><button id="saveDeepSeekKey" class="navy-button" type="button">本次会话启用</button><button id="clearDeepSeekKey" class="light-button" type="button">关闭</button></div><small id="deepSeekStatus">当前使用本地识别</small></div>
       <div class="settings-buttons"><button id="exportButton" class="light-button" type="button">导出数据</button><label class="light-button import-label">导入数据<input id="importInput" type="file" accept="application/json,.json" hidden></label></div>
       <details class="capture-history"><summary>查看已确认的原文</summary><div id="captureHistory"></div></details>
       <button id="clearButton" class="danger-button" type="button">清空本机数据</button>

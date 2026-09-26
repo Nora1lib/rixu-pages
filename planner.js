@@ -35,7 +35,7 @@ function dateFromWords(text, now) {
   if (text.includes('大后天')) date.setDate(date.getDate() + 3);
   else if (text.includes('后天')) date.setDate(date.getDate() + 2);
   else if (text.includes('明天')) date.setDate(date.getDate() + 1);
-  else if (text.includes('今天')) return date;
+  else if (/今天|今晚|今早|今晨|今夜|今下午|今上午|今中午/.test(text)) return date;
   else {
     const match = text.match(/(下周|本周|这周|周|星期)([一二三四五六日天])/);
     if (!match) return null;
@@ -79,8 +79,9 @@ function usefulTitle(fragment) {
 
 export function parseCapture(raw, now = new Date()) {
   const prepared = raw.replace(/[，,](?=\s*(?:预计|大概|约)\s*(?:\d|[一二两三四五六七八九十半]))/g, ' ');
-  const fragments = prepared.replace(/(?:另外|还有|然后)(?=[^，。；\n]{3,})/g, '；')
-    .split(/[\n。；;，,]+/).map((item) => item.trim()).filter(Boolean).slice(0, 12);
+  const fragments = prepared.split(/[\n。；;]+/).flatMap((part) =>
+    part.split(/[，,](?=\s*(?:另外|然后|还要|还得|还需要|明天|后天|今天|今晚|下周|本周|周[一二三四五六日天]))/)
+  ).map((item) => item.trim()).filter(Boolean).slice(0, 12);
   const actionable = fragments.filter((item) => !/^(我)?(好焦虑|有点焦虑|很乱|不知道怎么办|压力好大|好烦|害怕|有点不知道先做哪个)$/.test(item));
   if (!actionable.length) return [{ title: '写下一件最担心的具体事项', kind: 'task', time: '', duration: 10, inferred: true }];
   return actionable.map((fragment) => {

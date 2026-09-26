@@ -1,4 +1,5 @@
 import { parseCapture, planTasks, formatDateTime, dayKey, timeLabel } from "./planner.js";
+import { recognizeWithDeepSeek } from "./deepseek.js";
 
 const $ = (selector) => document.querySelector(selector);
 const KEY = "rixu.web.v1";
@@ -12,18 +13,20 @@ const make = (tag, className, value) => {
   if (value !== undefined) node.textContent = value;
   return node;
 };
-const questLabels = { main: "主线", side: "支线", daily: "每日", normal: "短期任务" };
-function inferredQuest(title, kind) {
+const questLabels = { main: "主线", side: "支线", daily: "每日", normal: "短期任务", adventure: "奇遇任务" };
+function inferredQuest(title, kind, time = "", duration = 45, now = new Date()) {
   if (kind === "event") return "normal";
   if (/每天|每日|散步|运动|冥想|打卡/.test(title)) return "daily";
   if (/求职|作品集|面试准备|论文|考试准备|转行|学习计划/.test(title)) return "main";
   if (/财务|预算|储蓄|副业|整理房间|阅读计划/.test(title)) return "side";
+  if (/长期|接下来几个月|未来几个月|半年|一年内|长期推进|持续推进/.test(title)) return "main";
+  if (time && dayKey(new Date(time)) === dayKey(now) && (/紧急|尽快|马上|今晚|今天|必须/.test(title) || Number(duration) <= 60)) return "adventure";
   return "normal";
 }
-function isExpiredAdventure(task) { return task.kind === "task" && task.questType !== "daily" && task.status === "pending" && task.deadline && new Date(task.deadline).getTime() < Date.now(); }
+function isExpiredAdventure(task) { return task.kind === "task" && task.questType === "adventure" && task.status === "pending" && task.deadline && new Date(task.deadline).getTime() < Date.now(); }
 function isAdventure(task) {
   const deadline = task.deadline && new Date(task.deadline).getTime();
-  return task.kind === "task" && task.questType !== "daily" && task.status === "pending" && deadline && deadline >= Date.now() && deadline <= Date.now() + 36 * 3600000;
+  return task.kind === "task" && task.questType === "adventure" && task.status === "pending" && deadline && deadline >= Date.now();
 }
 function priorityOf(task) {
   if (task.priority && task.priority !== "auto") return ({ high: "高优先级", medium: "中优先级", low: "低优先级" })[task.priority];
@@ -58,7 +61,7 @@ function normalize(item) {
     createdAt: dateValue(item.createdAt) || new Date().toISOString(),
     deadline: dateValue(item.deadline), fixedAt: dateValue(item.fixedAt),
     notBefore: dateValue(item.notBefore), scheduledAt: dateValue(item.scheduledAt),
-    questType: ["main", "side", "daily", "normal"].includes(item.questType) ? item.questType : inferredQuest(item.title, item.kind),
+    questType: ["main", "side", "daily", "normal", "adventure"].includes(item.questType) ? item.questType : inferredQuest(item.title, item.kind),
     journeyId: typeof item.journeyId === "string" ? item.journeyId : null,
     priority: ["auto", "high", "medium", "low"].includes(item.priority) ? item.priority : "auto",
     dailyLastCompleted: /^\d{4}-\d{2}-\d{2}$/.test(item.dailyLastCompleted || "") ? item.dailyLastCompleted : null,
@@ -104,6 +107,8 @@ let undo = null;
 let proposed = null;
 let captureText = "";
 let captureDeferredId = null;
+let deepSeekKey = "";
+let captureBusy = false;
 let toastTimer;
 let activeEditId = null;
 let activeMilestoneJourneyId = null;
@@ -332,13 +337,17 @@ function render() {
   $("#weekdayLabel").textContent = new Intl.DateTimeFormat("zh-CN", { weekday: "long" }).format(now).replace("星期", "周");
   try {
     const lunar = new Intl.DateTimeFormat("zh-CN-u-ca-chinese", { month: "long", day: "numeric" }).format(now);
-    $("#lunarLabel").textContent = "农历" + lunar.replace(/(\d{1,2})日/, (_, raw) => {
+    const chineseMonth = (value) => {
+      const names = ["", "正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"];
+      return names[Number(value)] || value;
+    };
+    $("#lunarLabel").textContent = "农历" + lunar.replace(/(\d{1,2})月/g, (_, value) => chineseMonth(value) + "月").replace(/(\d{1,2})日?/g, (_, raw) => {
       const day = Number(raw);
       const digits = "一二三四五六七八九";
       const name = day <= 10 ? "初" + (day === 10 ? "十" : digits[day - 1])
         : day < 20 ? "十" + digits[day - 11]
         : day === 20 ? "二十" : day < 30 ? "廿" + digits[day - 21] : "三十";
-      return name + "日";
+      return name;
     });
   }
   catch { $("#lunarLabel").textContent = ""; }
@@ -353,7 +362,7 @@ function addField(card, label, type, value, onChange) {
   const isSelect = type === "select" || type === "quest-select" || type === "priority-select";
   const input = make(isSelect ? "select" : "input");
   if (isSelect) {
-    const options = type === "quest-select" ? [["normal", "短期任务"], ["main", "主线"], ["side", "支线"], ["daily", "每日任务"]] :
+    const options = type === "quest-select" ? [["adventure", "奇遇任务"], ["normal", "短期任务"], ["main", "主线"], ["side", "支线"], ["daily", "每日任务"]] :
       type === "priority-select" ? [["auto", "自动判断"], ["high", "高"], ["medium", "中"], ["low", "低"]] : [["task", "可调整任务"], ["event", "固定事项"]];
     for (const [key, title] of options) {
       const option = make("option", "", title);
@@ -366,6 +375,7 @@ function addField(card, label, type, value, onChange) {
     if (type === "text") input.maxLength = 180;
   }
   input.addEventListener("input", () => onChange(input.value));
+  if (["select", "quest-select", "datetime-local", "number"].includes(type)) input.addEventListener("change", renderDrafts);
   wrap.append(input); card.append(wrap);
 }
 function renderDrafts() {
@@ -387,28 +397,62 @@ function renderDrafts() {
   });
   $("#confirmDraftButton").disabled = drafts.length === 0;
   const totalMinutes = drafts.reduce((sum, item) => sum + Math.max(10, Number(item.duration) || 45), 0);
-  $("#questSuggestion").textContent = "这次共整理出 " + drafts.length + " 件事，预计约 " + totalMinutes + " 分钟。请核对固定时间与截止时间；确认后会按已有安排重新排程，并为任务之间留出缓冲。";
+  const adventure = drafts.find((item) => item.questType === "adventure");
+  $("#reviewTitle").textContent = adventure ? "奇遇任务出现了" : "任务已整理好";
+  $("#reviewSection").classList.toggle("has-adventure", Boolean(adventure));
+  $("#reviewFootnote").textContent = adventure ? "过时后从当前地图移入回顾，不会悄悄删除。" : "先放一放会移入收纳箱，之后可以继续整理。";
+  $("#questSuggestion").textContent = adventure ? "为这件事留出约 " + adventure.duration + " 分钟。确认后，日序会重新安排可调整任务；固定事项不会移动。" :
+    "这次共整理出 " + drafts.length + " 件事，预计约 " + totalMinutes + " 分钟。请核对时间、时长和任务归属。";
+  const preview = $("#questPlan"); preview.replaceChildren(); preview.hidden = !adventure;
+  if (adventure) {
+    const cutoff = adventure.time ? new Date(adventure.time) : null;
+    const oldPlan = planTasks(state.tasks);
+    const provisional = { id: "preview-adventure", title: adventure.title, kind: "task", status: "pending", questType: "adventure", priority: "high",
+      estimateMinutes: Number(adventure.duration) || 45, remainingMinutes: Number(adventure.duration) || 45, plannedMinutes: Math.min(Number(adventure.duration) || 45, 90),
+      createdAt: new Date().toISOString(), deadline: cutoff?.toISOString() || null, fixedAt: null, notBefore: null, scheduledAt: null };
+    const newPlan = planTasks(state.tasks.concat(provisional));
+    const suggested = newPlan.find((item) => item.id === provisional.id);
+    const summary = make("p", "plan-preview-title", suggested?.scheduledAt ? "建议安排 · " + formatDateTime(suggested.scheduledAt) : "当前时间窗口不足，请调整截止时间或时长");
+    preview.append(summary);
+    const changed = oldPlan.map((old) => ({ old, next: newPlan.find((item) => item.id === old.id) })).filter(({ old, next }) => old.scheduledAt !== next?.scheduledAt).slice(0, 2);
+    for (const { old, next } of changed) {
+      const row = make("div", "plan-preview-row");
+      row.append(make("span", "", old.scheduledAt ? timeLabel(old.scheduledAt) : "待安排"), make("span", "", old.title), make("span", "", "→"), make("strong", "", next?.scheduledAt ? timeLabel(next.scheduledAt) : "待安排"));
+      preview.append(row);
+    }
+    if (!changed.length) preview.append(make("p", "plan-preview-empty", "现有安排无需移动。"));
+  }
   const lead = $("#questLead"); lead.replaceChildren();
-  const first = drafts[0];
+  const first = adventure || drafts[0];
   if (first) {
-    const icon = make("span", "quest-lead-icon", first.kind === "event" ? "▣" : "✉");
+    const icon = make("span", "quest-lead-icon", first.kind === "event" ? "▣" : /回复|邮件/.test(first.title) ? "✉" : "✦");
     const info = make("div"); info.append(make("strong", "", first.title));
-    info.append(make("p", "", drafts.length > 1 ? "同时整理了另外 " + (drafts.length - 1) + " 件事。请在下方逐项核对。" : "先确认关键信息，再决定是否加入计划。"));
+    info.append(make("p", "", drafts.length > 1 ? "同时整理了另外 " + (drafts.length - 1) + " 件事。请在下方逐项核对。" : adventure ? "先花 " + first.duration + " 分钟完成关键一步。" : "先确认关键信息，再决定是否加入计划。"));
     lead.append(icon, info);
     const when = first.time ? new Date(first.time) : null;
     $("#questTiming").textContent = when && !Number.isNaN(when.getTime()) ? "◷ " + (first.kind === "event" ? "固定时间 · " : "截止前 · ") + formatDateTime(when) : "✦ 等待确认";
   } else $("#questTiming").textContent = "";
 }
-function startCapture(text = $("#captureInput").value) {
+async function startCapture(text = $("#captureInput").value) {
   if (!text.trim()) { $("#captureMessage").textContent = "先写下一件想处理的事。"; $("#captureInput").focus(); return 0; }
+  if (captureBusy) return 0;
+  captureBusy = true; $("#organizeButton").disabled = true;
   captureText = text.trim();
-  drafts = parseCapture(text).map((draft) => {
-    const questType = inferredQuest(draft.title, draft.kind);
-    return { ...draft, questType, priority: "auto", journeyName: ["main", "side"].includes(questType) ? inferredJourneyTitle(draft.title, questType) : "" };
-  });
+  let modelUsed = false;
+  try {
+    if (deepSeekKey) {
+      $("#captureMessage").textContent = "正在智能识别，请稍候…";
+      try { drafts = await recognizeWithDeepSeek(text, deepSeekKey); modelUsed = true; }
+      catch { toast("DeepSeek 暂不可用，已改用本地识别；请核对草稿。"); }
+    }
+    if (!modelUsed) drafts = parseCapture(text).map((draft) => {
+      const questType = inferredQuest(draft.title, draft.kind, draft.time, draft.duration);
+      return { ...draft, questType, priority: "auto", journeyName: ["main", "side"].includes(questType) ? inferredJourneyTitle(draft.title, questType) : "" };
+    });
+  } finally { captureBusy = false; $("#organizeButton").disabled = false; }
   renderDrafts();
   if (!$("#reviewSection").open) $("#reviewSection").showModal();
-  $("#captureMessage").textContent = "整理出 " + drafts.length + " 件事。请检查关键时间，再加入计划。";
+  $("#captureMessage").textContent = (modelUsed ? "智能" : "本地") + "整理出 " + drafts.length + " 件事。请核对关键时间，再加入计划。";
   return drafts.length;
 }
 function applyProposal() {
@@ -675,6 +719,19 @@ $("#confirmDraftButton").addEventListener("click", confirmDrafts);
 $("#changesConfirmButton").addEventListener("click", applyProposal);
 $("#changesCancelButton").addEventListener("click", () => { proposed = null; $("#changesDialog").close(); });
 $("#settingsButton").addEventListener("click", () => $("#settingsDialog").showModal());
+$("#saveDeepSeekKey").addEventListener("click", () => {
+  const key = $("#deepSeekKey").value.trim();
+  if (!key) { toast("请先输入 DeepSeek API 密钥。"); return; }
+  deepSeekKey = key;
+  $("#deepSeekKey").value = "";
+  $("#deepSeekStatus").textContent = "本次页面已启用 DeepSeek 智能识别";
+  toast("智能识别已启用；密钥只在本页内存中使用。");
+});
+$("#clearDeepSeekKey").addEventListener("click", () => {
+  deepSeekKey = ""; $("#deepSeekKey").value = "";
+  $("#deepSeekStatus").textContent = "当前使用本地识别";
+  toast("已关闭智能识别。");
+});
 $("#themeSelect").addEventListener("change", (event) => { localStorage.setItem("rixu.theme", event.target.value); setTheme(); });
 $("#scheduleMoreButton").addEventListener("click", () => setView("schedule"));
 $("#workSummary").addEventListener("click", () => $("#busyDialog").showModal());
@@ -745,7 +802,7 @@ $("#voiceButton").addEventListener("click", async () => {
   const recognition = new SpeechRecognition();
   activeRecognition = recognition;
   recognition.lang = "zh-CN";
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
   let finalText = "", interimText = "", error = "";
@@ -781,7 +838,7 @@ $("#voiceButton").addEventListener("click", async () => {
     }
     voiceState(true, "正在听，请说出要处理的事情；再次点按钮可结束。");
     recognition.start();
-    watchdog = setTimeout(() => { if (activeRecognition === recognition) recognition.stop(); }, 20000);
+    watchdog = setTimeout(() => { if (activeRecognition === recognition) recognition.stop(); }, 30000);
   } catch {
     clearTimeout(watchdog);
     activeRecognition = null;
@@ -795,7 +852,7 @@ function registerWebMcp() {
     { name: "start_task_capture", title: "整理事项草稿", description: "拆分用户输入并展示待确认草稿，不直接加入计划。",
       inputSchema: { type: "object", properties: { text: { type: "string", minLength: 1 } }, required: ["text"], additionalProperties: false },
       annotations: { readOnlyHint: false, untrustedContentHint: true },
-      execute(input) { if (!input || typeof input.text !== "string" || !input.text.trim()) throw new Error("请输入事项文本"); $("#captureInput").value = input.text; return { status: "awaiting_confirmation", draftCount: startCapture(input.text) }; } },
+      async execute(input) { if (!input || typeof input.text !== "string" || !input.text.trim()) throw new Error("请输入事项文本"); $("#captureInput").value = input.text; return { status: "awaiting_confirmation", draftCount: await startCapture(input.text) }; } },
     { name: "read_near_term_plan", title: "查看近期计划", description: "读取已确认的近期安排。",
       inputSchema: { type: "object", properties: {}, additionalProperties: false },
       annotations: { readOnlyHint: true, untrustedContentHint: true },
