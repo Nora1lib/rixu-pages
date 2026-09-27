@@ -1,4 +1,4 @@
-const CACHE = "rixu-static-v12";
+const CACHE = "rixu-static-v13";
 const FILES = ["./", "./index.html", "./widget.html", "./widget.css", "./widget.js", "./styles.css", "./app.js", "./planner.js", "./deepseek.js", "./manifest.webmanifest", "./assets/day-landscape.png", "./assets/night-landscape.png", "./assets/adventure-camp-night.png", "./assets/pixel-panel-frame.png", "./assets/quest-mountain-flag.png", "./assets/zlabs-pixel-cn.woff2"];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES)));

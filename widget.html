@@ -13,9 +13,9 @@
   <main class="widget-shell">
     <header class="widget-header">
       <div class="date-copy"><span id="skyIcon" aria-hidden="true">🌙</span><strong id="dateLabel">今天</strong></div>
-      <div class="header-actions"><button id="openFullButton" type="button" title="打开完整日序">完整页面</button><button id="collapseButton" type="button" title="收起到菜单栏" aria-label="收起到菜单栏">−</button></div>
+      <div class="header-actions"><button id="openFullButton" type="button" title="打开完整日序">完整页面</button><button id="collapseButton" type="button" title="收起为桌面按钮" aria-label="收起为桌面按钮">−</button></div>
     </header>
-    <p id="browserHint" class="browser-hint" hidden>这是网页预览；顶部菜单栏的“✦”按钮只会出现在 Mac 应用中。</p>
+    <p id="browserHint" class="browser-hint" hidden>这是网页预览；桌面的太阳／月亮唤起按钮只会出现在 Mac 应用中。</p>
     <section class="current-card" aria-labelledby="currentHeading">
       <span class="eyebrow">✦ 当前任务</span>
       <h1 id="currentHeading">从一件小事开始</h1>
@@ -28,7 +28,10 @@
     </form>
     <section class="timeline-card" aria-labelledby="timelineHeading">
       <div class="timeline-head"><h2 id="timelineHeading">未来 72 小时</h2><span id="timelineCount">0 项</span></div>
-      <div id="timelineList" class="timeline-list"></div>
+      <div class="timeline-scroll">
+        <div id="timelineList" class="timeline-list"></div>
+        <div id="pendingGroup" class="pending-group" hidden><strong id="pendingHeading">待安排</strong><div id="pendingList"></div></div>
+      </div>
     </section>
   </main>
   <dialog id="reviewDialog" aria-labelledby="reviewHeading">
