@@ -1,6 +1,5 @@
-import { parseCapture, summarizeTitle, planTasks, dayKey } from "./planner.js";
+import { parseCapture, summarizeTitle, planTasks, dayKey, formatDateTime, timeLabel } from "./planner.js";
 import { recognizeWithDeepSeek } from "./deepseek.js";
-import { renderScheduleView } from "./schedule-view.js";
 
 const KEY = "rixu.web.v1";
 const $ = (selector) => document.querySelector(selector);
@@ -66,29 +65,84 @@ function render() {
   const current = tasks.filter((task) => task.kind === "task" || task.fixedAt && new Date(task.fixedAt).getTime() + task.estimateMinutes * 60000 >= now.getTime())
     .sort((a, b) => score(b, now.getTime()) - score(a, now.getTime()))[0];
   $("#currentHeading").textContent = current?.title || "从一件小事开始";
-  $("#currentMeta").textContent = current ? `${current.kind === "event" ? "固定事项" : labels[current.questType] || "短期任务"} · ${current.priority === "high" ? "高优先级" : current.priority === "medium" ? "中优先级" : "下一步"} · ${Number(current.plannedMinutes) || Number(current.estimateMinutes) || 45} 分钟` : "写下一件想推进的事。";
-  const { explanation } = renderScheduleView({
-    tasks: data.tasks, journeys: data.journeys,
-    list: $("#scheduleList"), dailyList: $("#dailyList"), workSummary: $("#workSummary"),
-    fullView: true, onDailyToggle: toggleDaily, now
-  });
-  $("#busyExplanation").textContent = explanation;
+  $("#currentMeta").textContent = current ? `${questOf(current, data.journeys)} · ${current.priority === "high" ? "高优先级" : current.priority === "medium" ? "中优先级" : "下一步"} · ${Number(current.plannedMinutes) || Number(current.estimateMinutes) || 45} 分钟` : "写下一件想推进的事。";
+  const horizon = now.getTime() + 72 * 3600000;
+  const upcoming = tasks.filter((task) => task.scheduledAt && task.questType !== "daily" && new Date(task.scheduledAt).getTime() <= horizon)
+    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  const pending = tasks.filter((task) => !task.scheduledAt || new Date(task.scheduledAt).getTime() > horizon)
+    .sort((a, b) => (a.scheduledAt || a.deadline ? new Date(a.scheduledAt || a.deadline).getTime() : Infinity) - (b.scheduledAt || b.deadline ? new Date(b.scheduledAt || b.deadline).getTime() : Infinity)
+      || new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  $("#timelineCount").textContent = `${upcoming.length + pending.length} 项`;
+  const list = $("#timelineList"); list.replaceChildren();
+  const pendingList = $("#pendingList"); pendingList.replaceChildren();
+  $("#pendingGroup").hidden = !pending.length;
+  $("#pendingHeading").textContent = `后续日程与待安排 · ${pending.length} 项`;
+  if (!upcoming.length) {
+    const empty = document.createElement("p"); empty.className = "empty";
+    empty.textContent = "未来 72 小时暂无已排定的时段。"; list.append(empty);
+  }
+  let currentDay = "";
+  let group = null;
+  for (const task of upcoming) {
+    const key = dayKey(task.scheduledAt);
+    if (key !== currentDay) {
+      currentDay = key;
+      group = document.createElement("div"); group.className = "schedule-day";
+      const date = new Date(key + "T12:00:00");
+      const heading = document.createElement("div"); heading.className = "day-label";
+      heading.textContent = new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "long" }).format(date);
+      group.append(heading); list.append(group);
+    }
+    appendTimelineRow(group, task, timeLabel(task.scheduledAt), data.journeys, false);
+  }
+  for (const task of pending) {
+    const label = task.scheduledAt ? shortTime(task.scheduledAt) : task.questType === "daily" ? "每日" : task.deadline ? `截止 ${shortTime(task.deadline)}` : "待安排";
+    appendTimelineRow(pendingList, task, label, data.journeys, true);
+  }
+  renderWorkSummary(data.tasks, now);
+
 }
 
-function toggleDaily(taskId) {
-  const data = load();
-  const task = data.tasks.find((item) => item.id === taskId && item.questType === "daily");
-  if (!task) return;
-  const today = dayKey(new Date());
-  task.dailyHistory = Array.isArray(task.dailyHistory) ? task.dailyHistory : [];
-  const done = task.dailyHistory.includes(today) || task.dailyLastCompleted === today;
-  task.dailyHistory = done ? task.dailyHistory.filter((value) => value !== today) : [...new Set(task.dailyHistory.concat(today))].slice(-365);
-  task.dailyLastCompleted = task.dailyHistory.includes(today) ? today : null;
-  task.dailyLastSkipped = null;
-  try { localStorage.setItem(KEY, JSON.stringify(data)); }
-  catch { $("#captureMessage").textContent = "本机存储失败，请稍后再试。"; render(); return; }
-  if (native) window.webkit.messageHandlers.rixu.postMessage({ action: "dataChanged" });
-  render();
+function questOf(task, journeys) {
+  if (task.kind === "event") return "固定事项";
+  const journey = journeys.find((item) => item.id === task.journeyId);
+  return journey ? `${labels[journey.kind]} · ${journey.title}` : labels[task.questType] || labels.normal;
+}
+
+function appendTimelineRow(host, task, label, journeys, pending) {
+  const adventure = task.kind === "task" && task.questType === "adventure" && task.deadline && new Date(task.deadline).getTime() >= Date.now();
+  const kind = task.kind === "event" ? "event" : adventure ? "adventure" : "flexible";
+  const row = document.createElement("div"); row.className = `timeline-row ${kind}`;
+  const time = document.createElement("span"); time.className = "timeline-time"; time.textContent = label;
+  const detail = document.createElement("div"); detail.className = "timeline-info";
+  const title = document.createElement("div"); title.className = "timeline-title"; title.textContent = task.title;
+  const meta = document.createElement("div"); meta.className = "timeline-meta";
+  meta.textContent = task.kind === "event" ? "已保护的固定时间" : `${questOf(task, journeys)} · 预计 ${Number(task.plannedMinutes) || Number(task.estimateMinutes) || 45} 分钟`;
+  if (task.deadline) meta.textContent += ` · 截止 ${formatDateTime(task.deadline)}`;
+  const pill = document.createElement("span"); pill.className = `status-pill ${kind}`;
+  pill.textContent = task.kind === "event" ? "▣ 固定事项" : adventure ? `✦ 奇遇 · ${timeLabel(task.deadline)} 前` : task.questType === "daily" ? "□ 每日任务" : pending && !task.scheduledAt ? "◇ 待安排" : "⇄ 可调整";
+  detail.append(title, meta); row.append(time, detail, pill); host.append(row);
+}
+
+function renderWorkSummary(tasks, now) {
+  const today = dayKey(now);
+  const minutes = tasks.filter((task) => task.status === "pending" && task.scheduledAt && dayKey(task.scheduledAt) === today && task.questType !== "daily" && !/聚餐|散步|休息|娱乐|旅行/.test(task.title))
+    .reduce((sum, task) => sum + (Number(task.plannedMinutes) || 0), 0);
+  const urgent = tasks.filter((task) => task.kind === "task" && task.questType === "adventure" && task.status === "pending" && task.deadline && new Date(task.deadline).getTime() >= now.getTime() && new Date(task.deadline).getTime() <= now.getTime() + 24 * 3600000).length;
+  const level = minutes || urgent ? Math.max(1, Math.min(5, Math.ceil(minutes / 75) + (urgent ? 1 : 0))) : 0;
+  const hours = minutes ? (Math.ceil(minutes / 30) / 2).toString() : "0";
+  const summary = $("#workSummary"); summary.replaceChildren();
+  const text = document.createElement("span"); text.textContent = level ? `预计工作 ${hours} 小时` : "今日空闲"; summary.append(text);
+  if (level) {
+    const mangoes = document.createElement("span"); mangoes.className = `mango-strip level-${level}`;
+    mangoes.setAttribute("role", "img"); mangoes.setAttribute("aria-label", `忙碌度 ${level}/5`);
+    for (let i = 0; i < level; i++) {
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use"); use.setAttribute("href", "#i-mango"); svg.append(use); mangoes.append(svg);
+    }
+    summary.append(mangoes);
+  }
+  $("#busyExplanation").textContent = level ? `今天预计工作约 ${hours} 小时，临近截止的奇遇任务 ${urgent} 件，忙碌度 ${level}/5。` : "今天还没有已安排的工作或临近截止任务。";
 }
 
 function inferQuest(text, kind, time, duration) {
@@ -238,7 +292,7 @@ function renderPreview() {
   if (result.error) { host.textContent = result.error; return; }
   for (const task of result.additions.slice(0, 3)) {
     const planned = result.data.tasks.find((item) => item.id === task.id);
-    const row = document.createElement("p"); row.textContent = `${task.title}：${planned?.scheduledAt ? shortTime(planned.scheduledAt) : task.status === "done" ? "已完成补录" : "待安排（不会出现在时间轴）"}`;
+    const row = document.createElement("p"); row.textContent = `${task.title}：${planned?.scheduledAt ? shortTime(planned.scheduledAt) : task.status === "done" ? "已完成补录" : "待安排"}`;
     host.append(row);
   }
   for (const { old, next } of result.changes.slice(0, 2)) {
@@ -259,7 +313,7 @@ function confirm() {
   $("#reviewDialog").close();
   const unplanned = result.additions.filter((item) => item.status === "pending" && !result.data.tasks.find((task) => task.id === item.id)?.scheduledAt).length;
   $("#captureMessage").textContent = unplanned
-    ? `已加入 ${result.additions.length} 件事，其中 ${unplanned} 件尚未排定时段；可在完整页面调整。`
+    ? `已加入 ${result.additions.length} 件事，其中 ${unplanned} 件尚未排定时段，见下方“后续日程与待安排”。`
     : `已加入 ${result.additions.length} 件事，时间轴已更新。`;
   if (native) window.webkit.messageHandlers.rixu.postMessage({ action: "dataChanged" });
   render();

@@ -28,8 +28,11 @@
       <p id="captureMessage" role="status">在这里核对结果并确认入列。</p>
     </form>
     <section class="timeline-card" aria-labelledby="timelineHeading">
-      <div class="timeline-head"><h2 id="timelineHeading">近期日程</h2><button id="workSummary" class="work-summary" type="button" aria-label="查看今日预计工作时间与忙碌度"></button></div>
-      <div class="timeline-scroll"><div id="scheduleList" class="schedule-list"></div><div id="dailyList" class="daily-list"></div></div>
+      <div class="timeline-head"><div><h2 id="timelineHeading">未来 72 小时</h2><span id="timelineCount">0 项</span></div><button id="workSummary" class="work-summary" type="button" aria-label="查看今日预计工作时间与忙碌度"></button></div>
+      <div class="timeline-scroll">
+        <div id="timelineList" class="timeline-list"></div>
+        <div id="pendingGroup" class="pending-group" hidden><strong id="pendingHeading">待安排</strong><div id="pendingList"></div></div>
+      </div>
       <p id="busyExplanation" class="busy-explanation" hidden></p>
     </section>
   </main>
