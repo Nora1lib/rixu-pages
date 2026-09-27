@@ -957,4 +957,10 @@ function registerWebMcp() {
 }
 setView(location.hash.slice(1) || "today", false);
 render(); checkReminders(); setInterval(() => { render(); checkReminders(); }, 60000); registerWebMcp();
+const incomingCapture = new URL(location.href).searchParams.get("capture");
+if (incomingCapture?.trim()) {
+  history.replaceState(null, "", location.pathname + location.hash);
+  $("#captureInput").value = incomingCapture.slice(0, 500);
+  startCapture($("#captureInput").value);
+}
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
