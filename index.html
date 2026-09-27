@@ -17,10 +17,10 @@
     <symbol id="i-book" viewBox="0 0 32 32"><path fill="#0b2852" d="M4 3h23v26H4z"/><path fill="#f4c861" d="M8 6h17v20H8z"/><path fill="#0b2852" d="M11 10h11v2H11zm0 5h11v2H11zm0 5h8v2h-8z"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 32 32"><path fill="#0b2852" d="M3 5h26v25H3z"/><path fill="#f9ecd2" d="M6 11h20v16H6z"/><path fill="#f2c262" d="M6 8h20v5H6z"/><path fill="#0b2852" d="M9 2h3v8H9zm11 0h3v8h-3zM9 16h4v4H9zm8 0h4v4h-4zM9 22h4v3H9z"/></symbol>
     <symbol id="i-sprout" viewBox="0 0 32 32"><path fill="#0b2852" d="M14 17h4v11h-4z"/><path fill="#4f9874" d="M15 17C5 19 4 12 5 7c5-1 11 1 11 10zm2-1c0-9 6-12 11-10 1 6-2 12-11 10z"/><path fill="#9c6a3f" d="M5 26h23v4H5z"/></symbol>
-    <symbol id="i-home" viewBox="0 0 32 32"><path fill="currentColor" d="M3 15 16 3l13 12v14H19v-9h-6v9H3z"/></symbol>
-    <symbol id="i-map" viewBox="0 0 32 32"><path fill="none" stroke="currentColor" stroke-width="3" d="M3 6 12 3l9 4 8-4v23l-8 3-9-4-9 4zM12 3v22m9-18v22"/></symbol>
-    <symbol id="i-box" viewBox="0 0 32 32"><path fill="none" stroke="currentColor" stroke-width="3" d="M3 10h26v19H3zM1 4h30v7H1zM12 17h8"/></symbol>
-    <symbol id="i-settings" viewBox="0 0 32 32"><path fill="none" stroke="currentColor" stroke-width="3" d="M13 2h6l1 4 4 2 4-1 3 5-3 3v4l3 3-3 5-4-1-4 2-1 3h-6l-1-3-4-2-4 1-3-5 3-3v-4l-3-3 3-5 4 1 4-2z"/><circle cx="16" cy="17" r="4" fill="currentColor"/></symbol>
+    <symbol id="i-home" viewBox="0 0 32 32"><path fill="currentColor" d="M13 2h6v3h4v4h4v4h3v4h-3v12H5V17H2v-4h3V9h4V5h4zM9 17v8h5v-7h4v7h5v-8z"/></symbol>
+    <symbol id="i-map" viewBox="0 0 32 32"><path fill="currentColor" d="M2 5h4v2h5V5h5v2h5V5h5v2h4v21h-4v-2h-5v2h-5v-2h-5v2H6v-2H2zm4 5v13h5V10zm10 0v13h5V10zm10 0v13h1V10z"/><path fill="#f4c861" d="M13 12h6v3h-2v5h-2v-5h-2z"/></symbol>
+    <symbol id="i-box" viewBox="0 0 32 32"><path fill="currentColor" d="M4 3h24v4h3v7h-3v14H4V14H1V7h3zm4 14v7h16v-7h-5v4h-6v-4z"/><path fill="#f4c861" d="M5 8h22v4H5z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 32 32"><path fill="currentColor" d="M12 2h8v4h4v2h4v5h3v7h-3v5h-4v2h-4v3h-8v-3H8v-2H4v-5H1v-7h3V8h4V6h4zm1 10v8h7v-8z"/><path fill="#f4c861" d="M14 13h5v6h-5z"/></symbol>
     <symbol id="i-mango" viewBox="0 0 24 28"><path fill="#123353" d="M9 5h4l2-4 3 1-2 5c7 5 7 17-4 20C2 28-1 16 5 9z"/><path fill="currentColor" d="M9 8c-6 3-7 15 1 16 9 1 12-10 6-15-2-2-5-2-7-1z"/><path fill="#5b9c5a" d="M12 6c0-5-4-5-6-4 0 3 2 5 6 4z"/></symbol>
   </svg>
   <div class="scene" aria-hidden="true"></div>
@@ -47,6 +47,7 @@
         <div id="scheduleList" class="schedule-list"></div><div id="dailyList" class="daily-list"></div>
         <button id="scheduleMoreButton" class="section-link" type="button">查看完整日程 <span aria-hidden="true">›</span></button>
       </section>
+      <button id="journeyShortcut" class="journey-shortcut" type="button">⛰️ 查看长期旅程 <span aria-hidden="true">›</span></button>
       <section class="journey-panel" id="journey" aria-labelledby="journeyTitle">
         <div class="journey-heading"><svg aria-hidden="true"><use href="#i-mountain"/></svg><h2 id="journeyTitle">长期旅程</h2><button id="newJourneyButton" class="journey-create" type="button">＋ 新建旅程</button></div><div id="journeyList" class="journey-list"></div>
       </section>
@@ -109,7 +110,8 @@
   <dialog id="settingsDialog" class="settings-dialog" aria-labelledby="settingsTitle">
     <form method="dialog" class="settings-content"><div class="section-head"><h2 id="settingsTitle">设置与数据</h2><button class="icon-button" value="cancel" aria-label="关闭设置">×</button></div>
       <label class="setting-row"><span><strong>背景时间</strong><small>跟随当前时间，或手动选择远足与扎营。</small></span><select id="themeSelect"><option value="auto">自动切换</option><option value="day">白天 · 远足</option><option value="night">夜间 · 扎营</option></select></label>
-      <label class="setting-row"><span><strong>安静提醒</strong><small>页面打开时显示临近事项，不发出声音。</small></span><input id="reminderToggle" type="checkbox" checked></label>
+      <label class="setting-row"><span><strong>临期提醒</strong><small>页面打开时显示柔和提示；重要事项会更早提醒。</small></span><input id="reminderToggle" type="checkbox" checked></label>
+      <label class="setting-row"><span><strong>提醒方式</strong><small>声音需要手动开启，受手机浏览器播放限制。</small></span><select id="reminderMode"><option value="visual">渐入提示</option><option value="sound">渐入提示＋轻音</option></select></label>
       <div class="ai-setting"><strong>DeepSeek 智能识别</strong><p>可选。启用后，整理时只把本次输入和设备时间发给 DeepSeek。密钥仅保留在当前页面内存，刷新即清除；不会写入仓库或备份。</p><label class="sr-only" for="deepSeekKey">DeepSeek API 密钥</label><input id="deepSeekKey" type="password" autocomplete="off" spellcheck="false" placeholder="在此输入 DeepSeek API 密钥"><div class="ai-setting-actions"><button id="saveDeepSeekKey" class="navy-button" type="button">本次会话启用</button><button id="clearDeepSeekKey" class="light-button" type="button">关闭</button></div><small id="deepSeekStatus">当前使用本地识别</small></div>
       <div class="settings-buttons"><button id="exportButton" class="light-button" type="button">导出数据</button><label class="light-button import-label">导入数据<input id="importInput" type="file" accept="application/json,.json" hidden></label></div>
       <details class="capture-history"><summary>查看已确认的原文</summary><div id="captureHistory"></div></details>
@@ -118,6 +120,7 @@
     </form>
   </dialog>
   <dialog id="changesDialog" class="settings-dialog" aria-labelledby="changesTitle"><div class="settings-content"><h2 id="changesTitle">这些安排会调整</h2><p class="section-description">请确认变更；加入后仍可撤销。</p><ul id="changesList" class="changes-list"></ul><div class="dialog-actions"><button id="changesCancelButton" class="light-button" type="button">返回修改</button><button id="changesConfirmButton" class="gold-button" type="button">确认新计划</button></div></div></dialog>
+  <div id="reminderBanner" class="reminder-banner" role="alert" hidden><span aria-hidden="true">✦</span><div><strong id="reminderTitle"></strong><p id="reminderDetail"></p></div><button id="reminderDismiss" type="button" aria-label="关闭提醒">×</button></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>

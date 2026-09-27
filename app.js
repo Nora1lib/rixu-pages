@@ -5,7 +5,7 @@ const $ = (selector) => document.querySelector(selector);
 const KEY = "rixu.web.v1";
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const newId = () => crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random();
-const defaults = () => ({ tasks: [], journeys: [], captures: [], deferredCaptures: [], quietReminders: true });
+const defaults = () => ({ tasks: [], journeys: [], captures: [], deferredCaptures: [], quietReminders: true, reminderMode: "visual" });
 const dateValue = (value) => value && !Number.isNaN(new Date(value).getTime()) ? value : null;
 const make = (tag, className, value) => {
   const node = document.createElement(tag);
@@ -14,6 +14,21 @@ const make = (tag, className, value) => {
   return node;
 };
 const questLabels = { main: "主线", side: "支线", daily: "每日", normal: "短期任务", adventure: "奇遇任务" };
+const journeyHints = [
+  ["工作", /求职|面试|简历|作品集|投递|招聘/], ["求职", /求职|面试|简历|作品集|投递|招聘/],
+  ["财务", /财务|预算|账单|存钱|储蓄|理财/],
+  ["学习", /学习|课程|复习|考试|论文|作业/], ["健康", /健康|运动|健身|跑步|体检/]
+];
+function relatedJourney(title) {
+  const clean = title.replace(/[，。\s·｜|]/g, "");
+  return state.journeys.map((journey) => {
+    const name = journey.title.replace(/[，。\s·｜|]/g, "");
+    const words = name.match(/[\u4e00-\u9fa5]{2,}/g) || [];
+    const direct = name.length >= 2 && (clean.includes(name) || words.some((word) => word.length >= 2 && clean.includes(word)));
+    const thematic = journeyHints.some(([hint, pattern]) => name.includes(hint) && pattern.test(clean));
+    return { journey, score: direct ? 2 : thematic ? 1 : 0 };
+  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score)[0]?.journey || null;
+}
 function inferredQuest(title, kind, time = "", duration = 45, now = new Date()) {
   if (kind === "event") return "normal";
   if (/每天|每日|散步|运动|冥想|打卡/.test(title)) return "daily";
@@ -60,6 +75,7 @@ function normalize(item) {
     plannedMinutes: Math.max(10, Math.min(Number(item.plannedMinutes) || minutes, 90)),
     createdAt: dateValue(item.createdAt) || new Date().toISOString(),
     deadline: dateValue(item.deadline), fixedAt: dateValue(item.fixedAt),
+    actualStartAt: dateValue(item.actualStartAt), completedAt: dateValue(item.completedAt),
     notBefore: dateValue(item.notBefore), scheduledAt: dateValue(item.scheduledAt),
     questType: ["main", "side", "daily", "normal", "adventure"].includes(item.questType) ? item.questType : inferredQuest(item.title, item.kind),
     journeyId: typeof item.journeyId === "string" ? item.journeyId : null,
@@ -98,7 +114,7 @@ function load() {
     return ensureLegacyJourneys({ tasks, journeys,
       captures: Array.isArray(raw.captures) ? raw.captures.map(normalizeCapture).filter(Boolean).slice(-200) : [],
       deferredCaptures: Array.isArray(raw.deferredCaptures) ? raw.deferredCaptures.map(normalizeCapture).filter(Boolean).slice(-100) : [],
-      quietReminders: raw.quietReminders !== false });
+      quietReminders: raw.quietReminders !== false, reminderMode: raw.reminderMode === "sound" ? "sound" : "visual" });
   } catch { return defaults(); }
 }
 let state = load();
@@ -127,7 +143,7 @@ function toast(message) {
 function commit(next, message) {
   undo = clone(state);
   state = { tasks: planTasks(next.tasks), journeys: next.journeys || [], captures: next.captures || [],
-    deferredCaptures: next.deferredCaptures || [], quietReminders: next.quietReminders };
+    deferredCaptures: next.deferredCaptures || [], quietReminders: next.quietReminders, reminderMode: next.reminderMode || "visual" };
   save(); render(); toast(message);
 }
 function findOrCreateJourney(next, title, kind) {
@@ -147,20 +163,21 @@ function button(text, action, taskId) {
 }
 function activeTasks() { return state.tasks.filter((task) => task.status === "pending" && !isExpiredAdventure(task) && !isDailyDone(task) && !isDailySkipped(task)); }
 function nextScore(task) {
-  const scheduled = task.scheduledAt ? new Date(task.scheduledAt).getTime() : Infinity;
+  const scheduled = task.scheduledAt || task.fixedAt ? new Date(task.scheduledAt || task.fixedAt).getTime() : Infinity;
   const deadline = task.deadline ? new Date(task.deadline).getTime() : Infinity;
   let score = task.priority === "high" ? 65 : task.priority === "medium" ? 30 : task.priority === "low" ? -20 : task.questType === "main" ? 30 : 0;
-  if (deadline - Date.now() <= 36 * 3600000) score += 70;
+  if (deadline >= Date.now() && deadline - Date.now() <= 36 * 3600000) score += 70;
+  if (deadline >= Date.now() && deadline - Date.now() <= 3 * 3600000) score += 45;
   if (task.questType === "adventure") score += 20;
   if (scheduled <= Date.now() + 2 * 3600000) score += 45;
   else if (scheduled <= Date.now() + 24 * 3600000) score += 20;
   if (task.questType === "daily") score += 6;
+  if (task.kind === "event") score += scheduled <= Date.now() + 60 * 60000 && scheduled + task.estimateMinutes * 60000 >= Date.now() ? 130 : scheduled <= Date.now() + 3 * 3600000 ? 75 : 0;
   return score;
 }
 function renderNext() {
-  const task = activeTasks().filter((item) => item.kind === "task")
-    .sort((a, b) => nextScore(b) - nextScore(a) || (a.scheduledAt || "").localeCompare(b.scheduledAt || ""))[0] ||
-    activeTasks().filter((item) => item.kind === "event").sort((a, b) => new Date(a.fixedAt) - new Date(b.fixedAt))[0];
+  const task = activeTasks().filter((item) => item.kind === "task" || item.fixedAt && new Date(item.fixedAt).getTime() + item.estimateMinutes * 60000 >= Date.now())
+    .sort((a, b) => nextScore(b) - nextScore(a) || (a.scheduledAt || a.fixedAt || "").localeCompare(b.scheduledAt || b.fixedAt || ""))[0];
   const content = $("#nextStep"), actions = $("#nextActions");
   content.replaceChildren(); actions.replaceChildren();
   if (!task) {
@@ -171,6 +188,7 @@ function renderNext() {
   const title = make("h1", "", task.title); title.id = "nextTitle";
   content.append(title);
   content.append(make("p", "next-meta", "归属：" + questOf(task) + " · " + priorityOf(task) + " · " + task.plannedMinutes + " 分钟"));
+  content.append(make("p", "next-why", "排序依据：" + (task.kind === "event" ? "固定时间临近" : task.priority !== "auto" ? "你设为" + priorityOf(task) : task.deadline && new Date(task.deadline).getTime() - Date.now() < 3 * 3600000 ? "临近截止" : task.questType === "main" ? "主线推进" : task.scheduledAt ? "接近安排时间" : "可开始的下一步")));
   const reason = task.kind === "event" ? "这是一项固定时间的日程，日序会保护原定时间。" : isAdventure(task) ? "截止时间临近，先为它留出这一段。" :
     task.questType === "main" ? "这是主线旅程的下一步。" :
     task.questType === "daily" ? "完成今天的小行动，就能继续向前。" :
@@ -184,10 +202,12 @@ function renderNext() {
   actions.hidden = false;
 }
 function renderSchedule() {
-  const horizon = Date.now() + (document.body.dataset.view === "schedule" ? 7 * 24 : 72) * 3600000;
+  const fullView = document.body.dataset.view === "schedule";
+  const horizon = Date.now() + (fullView ? 7 * 24 : 72) * 3600000;
   const items = state.tasks.filter((task) => task.status === "pending" && task.scheduledAt && !isExpiredAdventure(task) &&
     task.questType !== "daily" && new Date(task.scheduledAt).getTime() <= horizon)
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  if (!fullView) items.splice(3);
   const host = $("#scheduleList");
   host.replaceChildren();
   if (!items.length) {
@@ -290,7 +310,9 @@ function renderTasks() {
   for (const capture of [...state.deferredCaptures].reverse()) {
     const row = make("div", "deferred-row");
     const info = make("div"); info.append(make("p", "", capture.text), make("small", "", formatDateTime(capture.createdAt)));
-    row.append(info, button("继续整理", resumeDeferred, capture.id)); deferredHost.append(row);
+    const actions = make("div", "deferred-actions");
+    actions.append(button("继续整理", resumeDeferred, capture.id), button("彻底删除", deleteDeferred, capture.id));
+    row.append(info, actions); deferredHost.append(row);
   }
 }
 function appendTaskRow(host, task, expired = false) {
@@ -354,6 +376,7 @@ function render() {
   const weekday = now.getDay();
   $("#weekendLabel").textContent = weekday === 0 || weekday === 6 ? "周末进行中" : "距周末还有 " + (6 - weekday) + " 天";
   $("#reminderToggle").checked = state.quietReminders;
+  $("#reminderMode").value = state.reminderMode || "visual";
   setTheme(); renderNext(); renderSchedule(); renderJourneys(); renderTasks(); renderHistory();
 }
 function addField(card, label, type, value, onChange) {
@@ -389,10 +412,18 @@ function renderDrafts() {
     addField(card, "优先级", "priority-select", draft.priority, (value) => draft.priority = value);
     addField(card, "截止或固定时间", "datetime-local", draft.time, (value) => draft.time = value);
     addField(card, "预计分钟", "number", draft.duration, (value) => draft.duration = value);
+    const stateLabel = make("label"); stateLabel.append(make("span", "", "记录状态"));
+    const statusSelect = make("select");
+    for (const [key, label] of [["future", "待进行"], ["ongoing", "正在进行·补录"], ["completed", "已经结束·补录"]]) {
+      const option = make("option", "", label); option.value = key; statusSelect.append(option);
+    }
+    statusSelect.value = draft.recordState || "future";
+    statusSelect.addEventListener("change", () => draft.recordState = statusSelect.value);
+    stateLabel.append(statusSelect); card.append(stateLabel);
     const remove = button("移除", () => { drafts.splice(index, 1); renderDrafts(); });
     remove.className = "remove-draft";
     card.append(remove);
-    if (draft.inferred) card.append(make("p", "draft-note", "部分时间或时长是初步推测，请核对。"));
+    if (draft.inferred || draft.journeySuggested) card.append(make("p", "draft-note", [draft.inferred ? "部分时间或时长是初步推测，请核对。" : "", draft.journeySuggested ? "已识别与「" + draft.journeyName + "」相关，确认后加入该旅程。" : ""].filter(Boolean).join(" ")));
     host.append(card);
   });
   $("#confirmDraftButton").disabled = drafts.length === 0;
@@ -449,6 +480,13 @@ async function startCapture(text = $("#captureInput").value) {
       const questType = inferredQuest(draft.title, draft.kind, draft.time, draft.duration);
       return { ...draft, questType, priority: "auto", journeyName: ["main", "side"].includes(questType) ? inferredJourneyTitle(draft.title, questType) : "" };
     });
+    drafts = drafts.map((draft) => {
+      const journey = relatedJourney(draft.title);
+      const related = journey && draft.kind === "task" && draft.questType !== "daily";
+      const recordState = draft.recordState || (/已经|已完成|结束了|刚才.*(?:完成|结束)|补录.*(?:完成|结束)/.test(draft.title) ? "completed" : /正在|进行中|开始了/.test(draft.title) ? "ongoing" : "future");
+      return { ...draft, questType: related ? journey.kind : recordState === "completed" && draft.questType === "adventure" ? "normal" : draft.questType,
+        journeyName: related ? journey.title : draft.journeyName || "", journeySuggested: Boolean(related), recordState };
+    });
   } finally { captureBusy = false; $("#organizeButton").disabled = false; }
   renderDrafts();
   if (!$("#reviewSection").open) $("#reviewSection").showModal();
@@ -475,19 +513,23 @@ function confirmDrafts() {
     if (draft.kind === "event" && !draft.time) { toast("固定事项需要确认日期和时间。"); return; }
     const parsed = draft.time ? new Date(draft.time) : null;
     if (parsed && Number.isNaN(parsed.getTime())) { toast("请检查日期和时间。"); return; }
-    if (draft.kind === "event" && parsed < new Date(Date.now() - 60000)) { toast("固定事项不能安排在过去。"); return; }
+    if (draft.recordState === "future" && parsed < new Date(Date.now() - 60000)) { toast("过去的时间请选择‘正在进行’或‘已经结束’补录，或修改为未来时间。"); return; }
     const minutes = Math.max(10, Math.min(Number(draft.duration) || 45, 480));
     const time = parsed ? parsed.toISOString() : null;
     const questType = draft.kind === "event" ? "normal" : draft.questType;
     const journey = ["main", "side"].includes(questType) ? findOrCreateJourney(next, (draft.journeyName || "").trim() || inferredJourneyTitle(draft.title, questType), questType) : null;
     additions.push({ id: String(newId()), title: draft.title.trim().slice(0, 180), kind: draft.kind,
-      status: "pending", estimateMinutes: minutes, remainingMinutes: minutes,
+      status: draft.recordState === "completed" ? "done" : "pending", estimateMinutes: minutes, remainingMinutes: minutes,
       plannedMinutes: Math.min(minutes, 90), createdAt: new Date().toISOString(),
       deadline: draft.kind === "task" && questType !== "daily" ? time : null, fixedAt: draft.kind === "event" ? time : null,
-      notBefore: null, scheduledAt: null, questType, journeyId: journey?.id || null, priority: draft.priority || "auto", dailyLastCompleted: null, dailyHistory: [], dailyLastSkipped: null });
+      notBefore: null, scheduledAt: null, questType, journeyId: journey?.id || null, priority: draft.priority || "auto",
+      actualStartAt: draft.recordState === "ongoing" ? time || new Date().toISOString() : null,
+      completedAt: draft.recordState === "completed" ? time || new Date().toISOString() : null,
+      dailyLastCompleted: null, dailyHistory: [], dailyLastSkipped: null });
+    if (draft.recordState === "ongoing" && additions.at(-1).kind === "task") additions.at(-1).deadline = null;
   }
   if (!additions.length) return;
-  const fixed = state.tasks.filter((task) => task.status === "pending" && task.kind === "event").concat(additions.filter((task) => task.kind === "event"));
+  const fixed = state.tasks.filter((task) => task.status === "pending" && task.kind === "event" && new Date(task.fixedAt).getTime() + task.estimateMinutes * 60000 > Date.now()).concat(additions.filter((task) => task.status === "pending" && task.kind === "event" && new Date(task.fixedAt).getTime() + task.estimateMinutes * 60000 > Date.now()));
   for (let i = 0; i < fixed.length; i++) {
     for (let j = i + 1; j < fixed.length; j++) {
       const a = fixed[i], b = fixed[j];
@@ -575,7 +617,10 @@ function saveTaskEdit(event) {
   const timeInput = $("#editTime").value;
   const parsed = timeInput ? new Date(timeInput) : null;
   if (!title || (timeInput && Number.isNaN(parsed.getTime()))) { toast("请检查名称和时间。"); return; }
-  if (kind === "event" && (!parsed || parsed < new Date(Date.now() - 60000))) { toast("固定事项需要将来的准确时间。"); return; }
+  if (kind === "event" && !parsed) { toast("固定事项需要准确时间。"); return; }
+  if (kind === "event" && parsed.getTime() + minutes * 60000 < Date.now()) {
+    task.status = "done"; task.completedAt = new Date(parsed.getTime() + minutes * 60000).toISOString();
+  }
   if (kind === "event" && next.tasks.some((other) => other.id !== task.id && other.status === "pending" && other.kind === "event" &&
     parsed.getTime() < new Date(other.fixedAt).getTime() + other.estimateMinutes * 60000 &&
     new Date(other.fixedAt).getTime() < parsed.getTime() + minutes * 60000)) { toast("固定事项时间冲突，修改未保存。"); return; }
@@ -600,6 +645,13 @@ function resumeDeferred(captureId) {
   setView("today");
   $("#captureInput").value = item.text;
   startCapture(item.text);
+}
+function deleteDeferred(captureId) {
+  const item = state.deferredCaptures.find((capture) => capture.id === captureId);
+  if (!item || !confirm("彻底删除这条未敲定的输入？")) return;
+  const next = clone(state);
+  next.deferredCaptures = next.deferredCaptures.filter((capture) => capture.id !== captureId);
+  commit(next, "已删除暂存输入，可在本次页面中撤销。");
 }
 function openJourneyEditor(journeyId = null) {
   activeEditId = journeyId;
@@ -690,15 +742,34 @@ function deleteTask(taskId) {
 function checkReminders() {
   if (!state.quietReminders || document.visibilityState !== "visible") return;
   const now = Date.now();
-  for (const task of state.tasks) {
-    if (task.status !== "pending" || !task.scheduledAt || isExpiredAdventure(task) || reminded.has(task.id)) continue;
-    const minutes = new Date(task.scheduledAt).getTime() - now;
-    if (minutes >= 0 && minutes <= 15 * 60000) {
-      reminded.add(task.id);
-      toast("快到时间了：" + task.title + "。可以按自己的节奏开始。");
-      break;
+  const due = state.tasks.filter((task) => task.status === "pending" && task.scheduledAt && !isExpiredAdventure(task))
+    .map((task) => ({ task, minutes: (new Date(task.scheduledAt).getTime() - now) / 60000 }))
+    .filter(({ task, minutes }) => minutes >= 0 && minutes <= (priorityOf(task) === "高优先级" ? 60 : 15) && !reminded.has(task.id + task.scheduledAt))
+    .sort((a, b) => a.minutes - b.minutes)[0];
+  if (!due) return;
+  const { task, minutes } = due;
+  reminded.add(task.id + task.scheduledAt);
+  $("#reminderTitle").textContent = (minutes <= 15 ? "快到时间了" : "提前留意") + " · " + task.title;
+  $("#reminderDetail").textContent = questOf(task) + " · " + priorityOf(task) + " · 约 " + Math.ceil(minutes) + " 分钟后开始";
+  $("#reminderBanner").hidden = false;
+  if (state.reminderMode === "sound") playReminderTone();
+}
+let reminderAudio;
+function playReminderTone() {
+  try {
+    reminderAudio ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (reminderAudio.state !== "running") return;
+    const now = reminderAudio.currentTime;
+    for (const [offset, frequency] of [[0, 523], [0.24, 659]]) {
+      const oscillator = reminderAudio.createOscillator(), gain = reminderAudio.createGain();
+      oscillator.type = "sine"; oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0, now + offset);
+      gain.gain.linearRampToValueAtTime(0.035, now + offset + 0.07);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.55);
+      oscillator.connect(gain).connect(reminderAudio.destination);
+      oscillator.start(now + offset); oscillator.stop(now + offset + 0.56);
     }
-  }
+  } catch { /* Visual reminder remains available. */ }
 }
 function deferCurrentCapture() {
   if (!captureText.trim()) return;
@@ -734,6 +805,8 @@ $("#clearDeepSeekKey").addEventListener("click", () => {
 });
 $("#themeSelect").addEventListener("change", (event) => { localStorage.setItem("rixu.theme", event.target.value); setTheme(); });
 $("#scheduleMoreButton").addEventListener("click", () => setView("schedule"));
+$("#journeyShortcut").addEventListener("click", () => setView("journey"));
+$("#reminderDismiss").addEventListener("click", () => $("#reminderBanner").hidden = true);
 $("#workSummary").addEventListener("click", () => $("#busyDialog").showModal());
 $("#newJourneyButton").addEventListener("click", () => openJourneyEditor());
 $("#journeyForm").addEventListener("submit", saveJourney);
@@ -751,6 +824,13 @@ window.addEventListener("hashchange", () => setView(location.hash.slice(1), fals
 $("#reminderToggle").addEventListener("change", (event) => {
   state.quietReminders = event.target.checked; save();
   toast(event.target.checked ? "已开启安静提醒。" : "已关闭提醒。");
+});
+$("#reminderMode").addEventListener("change", (event) => {
+  state.reminderMode = event.target.value === "sound" ? "sound" : "visual";
+  if (state.reminderMode === "sound") {
+    try { reminderAudio ||= new (window.AudioContext || window.webkitAudioContext)(); reminderAudio.resume(); } catch {}
+  }
+  save(); toast(state.reminderMode === "sound" ? "已尝试开启轻音提醒。" : "已改为安静的渐入提示。");
 });
 $("#restoreButton").addEventListener("click", () => {
   if (!undo) return;
@@ -772,7 +852,7 @@ $("#importInput").addEventListener("change", async (event) => {
     commit(ensureLegacyJourneys({ tasks: data.tasks.map(normalize), journeys: Array.isArray(data.journeys) ? data.journeys.map(normalizeJourney).filter(Boolean) : [],
       captures: Array.isArray(data.captures) ? data.captures.map(normalizeCapture).filter(Boolean).slice(-200) : [],
       deferredCaptures: Array.isArray(data.deferredCaptures) ? data.deferredCaptures.map(normalizeCapture).filter(Boolean).slice(-100) : [],
-      quietReminders: data.quietReminders !== false }), "备份已导入。");
+      quietReminders: data.quietReminders !== false, reminderMode: data.reminderMode === "sound" ? "sound" : "visual" }), "备份已导入。");
     $("#settingsDialog").close();
   } catch { toast("无法读取备份文件。"); }
   event.target.value = "";
@@ -832,17 +912,18 @@ $("#voiceButton").addEventListener("click", async () => {
     } else voiceState(false, error || "没有识别到内容，请再试一次，或用手机键盘麦克风口述。");
   };
   try {
-    if (typeof SpeechRecognition.available === "function") {
-      const status = await SpeechRecognition.available({ langs: ["zh-CN"], processLocally: true }).catch(() => "unavailable");
-      if (status === "available") recognition.processLocally = true;
+    voiceState(true, "正在请求麦克风权限…");
+    if (navigator.mediaDevices?.getUserMedia) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
     }
-    voiceState(true, "正在听，请说出要处理的事情；再次点按钮可结束。");
+    voiceState(true, "正在听，请一次说完整件事；再次点按钮可结束。");
     recognition.start();
     watchdog = setTimeout(() => { if (activeRecognition === recognition) recognition.stop(); }, 30000);
-  } catch {
+  } catch (cause) {
     clearTimeout(watchdog);
     activeRecognition = null;
-    voiceState(false, "无法启动语音识别，可用手机键盘麦克风口述。");
+    voiceState(false, cause?.name === "NotAllowedError" ? "麦克风权限未获允许。请在手机浏览器的网站权限中打开麦克风，再点一次。" : "无法启动语音识别。可点输入框使用手机键盘麦克风口述。");
   }
 });
 function registerWebMcp() {

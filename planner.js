@@ -6,7 +6,10 @@ const fixedWords = /面试|开会|会议|上课|考试|预约|聚餐|电话|看�
 function numberOf(value) {
   if (/^\d+(?:\.\d+)?$/.test(value)) return Number(value);
   if (value === '半') return 0.5;
-  if (value.startsWith('十')) return 10 + (chineseNumbers[value[1]] || 0);
+  if (value.includes('十')) {
+    const [tens, ones] = value.split('十');
+    return (chineseNumbers[tens] || 1) * 10 + (chineseNumbers[ones] || 0);
+  }
   return chineseNumbers[value] || 0;
 }
 
@@ -29,7 +32,7 @@ function dateFromWords(text, now) {
     const day = Number(absolute[2]);
     const candidate = new Date(now.getFullYear(), month, day);
     if (candidate.getMonth() !== month || candidate.getDate() !== day) return null;
-    if (candidate.getTime() < date.getTime() - DAY) candidate.setFullYear(candidate.getFullYear() + 1);
+    if (candidate.getTime() < date.getTime() - DAY && !/刚才|之前|已经|过去|补录|正在|开始了|结束了|已完成/.test(text)) candidate.setFullYear(candidate.getFullYear() + 1);
     return candidate;
   }
   if (text.includes('大后天')) date.setDate(date.getDate() + 3);
@@ -64,8 +67,15 @@ function timeFromWords(text) {
 }
 
 function durationFromWords(text) {
-  const hour = text.match(/(\d+(?:\.\d+)?|[一二两三四五六七八九十]+|半)个?小时/);
-  const minute = text.match(/(\d+|[一二两三四五六七八九十]+)分钟/);
+  const range = text.match(/(?:从)?(?:上午|下午|晚上|早上|凌晨)?\s*(\d{1,2})(?:点|:|：)(\d{1,2})?\s*(?:到|至|—|－|-)\s*(?:上午|下午|晚上|早上|凌晨)?\s*(\d{1,2})(?:点|:|：)(\d{1,2})?/);
+  if (range) {
+    const start = Number(range[1]) * 60 + Number(range[2] || 0);
+    let end = Number(range[3]) * 60 + Number(range[4] || 0);
+    if (end < start) end += 24 * 60;
+    return Math.max(10, Math.min(end - start, 480));
+  }
+  const hour = text.match(/(?:(?:预计|持续|需要|大概|大约|约|花|用时|时长)\s*)?(\d+(?:\.\d+)?|[一二两三四五六七八九十]+|半)个?小时/);
+  const minute = text.match(/(?:(?:预计|持续|需要|大概|大约|约|花|用时|时长)\s*)?(\d+|[一二两三四五六七八九十]+)分(?:钟)?(?!\d)/);
   if (!hour && !minute) return null;
   const value = (hour ? numberOf(hour[1]) * 60 : 0) + (minute ? numberOf(minute[1]) : 0);
   return Math.max(10, Math.min(value, 480));
@@ -91,7 +101,7 @@ export function parseCapture(raw, now = new Date()) {
     let when = date;
     if (!when && time) {
       when = at(now, 0);
-      if (at(when, time.hour, time.minute) < now) when.setDate(when.getDate() + 1);
+      if (at(when, time.hour, time.minute) < now && !/刚才|之前|已经|过去|补录|正在|开始了|结束了/.test(fragment)) when.setDate(when.getDate() + 1);
     }
     if (when) {
       const defaultHour = fixed ? 9 : 18;

@@ -101,6 +101,23 @@ body[data-theme="day"] .scene:after{background:linear-gradient(180deg,rgba(12,44
 @media(max-width:650px){.app-shell{width:calc(100% - 28px)}.sky-header{height:154px;padding:39px 17px 0}.next-card{grid-template-columns:94px minmax(0,1fr);gap:8px;padding:12px 10px 11px}.hero-icon{min-height:94px}.hero-icon img{width:91px;height:91px}.next-content h1{font-size:clamp(1.55rem,6vw,2rem)}.capture-card,.schedule-card,.tasks-card{padding:11px 10px}.schedule-item{grid-template-columns:61px minmax(0,1fr);gap:8px;padding-left:22px}.schedule-time:before{left:-21px}.status-pill{grid-column:2;margin-top:0}.journey-card{grid-template-columns:54px minmax(0,1fr)}.journey-card img,.journey-card svg{width:53px;height:53px}}
 @media(max-width:430px){.date-line{gap:10px}.date-line strong{font-size:2.35rem}.date-line span{font-size:1.06rem}.date-detail{font-size:.8rem;gap:4px}.date-detail span+span:before{margin-right:4px}.date-icon{width:37px;height:37px;flex-basis:37px}.sky-header{gap:8px}.next-card{grid-template-columns:78px minmax(0,1fr)}.hero-icon img{width:77px;height:77px}.next-content h1{font-size:1.46rem}.next-meta{font-size:.75rem!important}.next-explain{font-size:.84rem!important}.capture-row{grid-template-columns:minmax(0,1fr) 39px 107px;gap:5px}.capture-row textarea{font-size:.88rem;padding:10px 7px}.work-summary{font-size:.75rem;max-width:145px}.mango-strip svg{width:15px;height:18px}.section-title h2{font-size:1.04rem}.schedule-title{font-size:.9rem}.schedule-detail{font-size:.75rem}}
 @media(prefers-reduced-motion:reduce){.voice-button.listening{animation:none}}
+/* Compact home, consistent pixel controls and calm reminders. */
+body[data-view="today"] .journey-panel{display:none}
+body:not([data-view="today"]) .journey-shortcut{display:none}
+.journey-shortcut{width:100%;padding:12px 16px;border:2px solid #e8bd67;background:#102f56;color:#fff4d6;text-align:left;font-size:.95rem;font-weight:800;box-shadow:0 5px 0 #071b37;cursor:pointer}
+.journey-shortcut span{float:right}
+.next-why{font-size:.75rem!important;color:#546987!important;margin:4px 0!important}
+.deferred-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.deferred-actions button:last-child{color:#9a3d39;background:#fff2ed;border-color:#e7bbb1}
+.bottom-nav a,.bottom-nav button{justify-content:center;min-height:61px;gap:4px}
+.bottom-nav svg{box-sizing:content-box;width:25px;height:25px;flex:none;padding:5px;border:2px solid #7898ba;background:#12395f;box-shadow:inset 2px 2px #3f6588,inset -2px -2px #071d3e;image-rendering:pixelated}
+.bottom-nav .active svg{border-color:#f4ce75;color:#ffe59b;background:#194573;box-shadow:inset 2px 2px #6b83a0,inset -2px -2px #071d3e,0 0 10px #f6cd6788}
+.reminder-banner[hidden]{display:none}
+.reminder-banner{position:fixed;z-index:35;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 28px));display:grid;grid-template-columns:26px minmax(0,1fr) 30px;align-items:start;gap:9px;padding:13px 14px;border:3px solid #efc56e;background:#fffaf0;color:#12345e;box-shadow:0 8px 22px #0018;animation:reminder-in .5s ease-out}
+.reminder-banner>span{color:#d59428;font-size:1.2rem}.reminder-banner strong{font-size:.98rem}.reminder-banner p{margin:4px 0 0;color:#536985;font-size:.78rem}.reminder-banner button{border:0;background:transparent;color:#36587e;font-size:1.3rem}
+@keyframes reminder-in{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}
+@media(max-width:430px){.deferred-row{display:block}.deferred-actions{margin-top:8px;justify-content:flex-start}.bottom-nav svg{width:22px;height:22px;padding:4px}.bottom-nav a,.bottom-nav button{font-size:.67rem}}
+@media(prefers-reduced-motion:reduce){.reminder-banner{animation:none}}
 
 /* Date stays in the sky; other copy keeps the approved plain sans-serif style. */
 @font-face{font-family:"ZLabs Pixel CN";src:url("./assets/zlabs-pixel-cn.woff2") format("woff2");font-style:normal;font-weight:400 900;font-display:swap}
