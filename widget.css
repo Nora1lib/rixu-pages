@@ -12,6 +12,7 @@ button{cursor:pointer}
 .date-copy{white-space:nowrap;min-width:0}.date-copy strong{font-family:ZLabsPixel,-apple-system,sans-serif;font-size:24px;letter-spacing:.02em;vertical-align:middle}.date-copy span{font-size:22px;margin-right:5px;vertical-align:middle}
 .header-actions{display:flex;gap:6px;flex-shrink:0}.header-actions button{border:1px solid #eac779a0;border-radius:6px;background:#102b4dbb;color:#fff5dd;min-height:30px;padding:4px 7px;font-size:11px}.header-actions #collapseButton{font-size:21px;line-height:18px;width:30px;padding:0}
 body:not([data-native=true]) #collapseButton{display:none}
+.browser-hint{background:#fff7db;color:#5b451d;border:1px solid #e5c57b;border-radius:5px;padding:7px 9px;font-size:11px;line-height:1.45;margin:0 0 12px}
 .current-card,.quick-card,.timeline-card{background:var(--cream);border:2px solid #f3d385;box-shadow:0 0 0 2px #143763,0 5px 0 #071b34a0;border-radius:8px;padding:12px 14px;margin-bottom:13px}
 .current-card{background:linear-gradient(160deg,#fffaf0,#fff2d4)}.eyebrow{font-size:11px;font-weight:800;color:#785417;letter-spacing:.04em}
 h1{font-size:19px;line-height:1.3;margin:7px 0 3px;max-height:2.6em;overflow:hidden}.current-card p{margin:0;color:#53647c;font-size:11px;line-height:1.45}

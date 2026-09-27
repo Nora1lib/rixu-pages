@@ -260,6 +260,7 @@ function openFull() {
 }
 
 document.body.dataset.native = String(native);
+$("#browserHint").hidden = native;
 $("#openFullButton").addEventListener("click", openFull);
 $("#collapseButton").addEventListener("click", () => { if (native) window.webkit.messageHandlers.rixu.postMessage({ action: "collapse" }); });
 $("#quickForm").addEventListener("submit", organize);
