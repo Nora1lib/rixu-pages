@@ -957,6 +957,9 @@ function registerWebMcp() {
 }
 setView(location.hash.slice(1) || "today", false);
 render(); checkReminders(); setInterval(() => { render(); checkReminders(); }, 60000); registerWebMcp();
+function refreshFromWidget() { state = load(); render(); }
+window.addEventListener("storage", (event) => { if (event.key === KEY) refreshFromWidget(); });
+window.addEventListener("rixu:data-changed", refreshFromWidget);
 const incomingCapture = new URL(location.href).searchParams.get("capture");
 if (incomingCapture?.trim()) {
   history.replaceState(null, "", location.pathname + location.hash);

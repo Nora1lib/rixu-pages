@@ -12,25 +12,33 @@
   <div class="sky" aria-hidden="true"></div>
   <main class="widget-shell">
     <header class="widget-header">
-      <div><span id="skyIcon" class="sky-icon" aria-hidden="true">☀️</span><strong id="dateLabel">今天</strong><p id="dateHint">把今天的一步走好</p></div>
-      <button id="pinButton" class="pin-button" type="button" aria-label="切换悬浮窗置顶" title="切换置顶">◆</button>
+      <div class="date-copy"><span id="skyIcon" aria-hidden="true">🌙</span><strong id="dateLabel">今天</strong></div>
+      <div class="header-actions"><button id="openFullButton" type="button" title="打开完整日序">完整页面</button><button id="collapseButton" type="button" title="收起到菜单栏" aria-label="收起到菜单栏">−</button></div>
     </header>
     <section class="current-card" aria-labelledby="currentHeading">
-      <span class="eyebrow">✦ 现在先做</span>
+      <span class="eyebrow">✦ 当前任务</span>
       <h1 id="currentHeading">从一件小事开始</h1>
-      <p id="currentMeta">打开日序，写下你想推进的事。</p>
-      <button id="openFullButton" class="gold-button" type="button">打开完整日序 <span aria-hidden="true">›</span></button>
-    </section>
-    <section class="next-card" aria-labelledby="nextHeading">
-      <span class="eyebrow">下一项日程</span>
-      <div class="next-row"><strong id="nextHeading">还没有安排</strong><span id="nextTime"></span></div>
+      <p id="currentMeta">写下一件想推进的事。</p>
     </section>
     <form id="quickForm" class="quick-card">
-      <label for="quickInput">✎ 快速记下</label>
-      <div class="quick-row"><input id="quickInput" type="text" maxlength="500" placeholder="例如：今晚八点回复邮件" autocomplete="off"><button type="submit" aria-label="整理这件事">›</button></div>
-      <p>将在完整页面智能整理，确认后才加入计划。</p>
+      <label for="quickInput">✎ 快速录入</label>
+      <div class="quick-row"><textarea id="quickInput" rows="2" maxlength="2000" placeholder="例如：今晚八点回复邮件，预计半小时"></textarea><button id="organizeButton" type="submit">智能整理</button></div>
+      <p id="captureMessage" role="status">在这里核对结果并确认入列。</p>
     </form>
-    <footer>日序 · 让每一步清晰可见</footer>
+    <section class="timeline-card" aria-labelledby="timelineHeading">
+      <div class="timeline-head"><h2 id="timelineHeading">未来 72 小时</h2><span id="timelineCount">0 项</span></div>
+      <div id="timelineList" class="timeline-list"></div>
+    </section>
   </main>
+  <dialog id="reviewDialog" aria-labelledby="reviewHeading">
+    <div class="review-shell">
+      <div class="review-head"><h2 id="reviewHeading">任务已整理好</h2><button id="closeReviewButton" type="button" aria-label="关闭核对窗口">×</button></div>
+      <p id="reviewSummary"></p>
+      <div id="draftList"></div>
+      <div class="plan-box"><strong>时间轴预览</strong><div id="planPreview"></div></div>
+      <p id="reviewMessage" role="alert"></p>
+      <div class="review-actions"><button id="confirmButton" type="button">确认并入列</button><button id="cancelButton" type="button">继续修改输入</button></div>
+    </div>
+  </dialog>
 </body>
 </html>
