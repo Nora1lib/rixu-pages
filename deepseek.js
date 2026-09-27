@@ -38,7 +38,7 @@ export async function recognizeWithDeepSeek(text, key, now = new Date()) {
       if (kind === "event") questType = "normal";
       else if (questType === "adventure" && (!time || dayKey(new Date(time)) !== dayKey(now))) questType = "normal";
       else if (questType === "normal" && time && dayKey(new Date(time)) === dayKey(now) && /紧急|今晚|今天|马上|尽快|必须/.test(sourceText)) questType = "adventure";
-      return { title: item.title.trim().slice(0, 180), kind, time, duration, questType,
+      return { title: item.title.trim().slice(0, 180), sourceText, kind, time, duration, questType,
         journeyName: ["main", "side"].includes(questType) ? String(item.journeyName || item.title).slice(0, 80) : "",
         priority: ["auto", "high", "medium", "low"].includes(item.priority) ? item.priority : "auto",
         recordState: ["future", "ongoing", "completed"].includes(item.recordState) ? item.recordState : /已经|已完成|结束了/.test(sourceText) ? "completed" : /正在|进行中|开始了/.test(sourceText) ? "ongoing" : "future",

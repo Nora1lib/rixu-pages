@@ -81,10 +81,19 @@ function durationFromWords(text) {
   return Math.max(10, Math.min(value, 480));
 }
 
-function usefulTitle(fragment) {
-  const cleaned = fragment.replace(/^(然后|另外|还有|而且|我还|我|要|得|需要|记得|提醒我|帮我)+/g, '')
-    .replace(/[，,\s]*(?:预计|大概|约)\s*(?:\d+(?:\.\d+)?|[一二两三四五六七八九十]+|半)个?(?:小时|分钟)\s*$/g, '').trim();
-  return cleaned || fragment.trim();
+export function summarizeTitle(fragment) {
+  let title = String(fragment || '').trim();
+  title = title.replace(/^(?:嗯|呃|那个|就是|然后|另外|还有|对了|顺便|我想|我还|我|记得|提醒我|帮我|麻烦|请)+[，,\s]*/g, '');
+  title = title.replace(/(?:预计|大概|大约|约|需要|持续|用时|花费?)?\s*(?:\d+(?:\.\d+)?|[一二两三四五六七八九十半两]+)个?小时(?:\s*(?:\d+|[一二两三四五六七八九十]+)分(?:钟)?)?/g, '');
+  title = title.replace(/(?:预计|大概|大约|约|需要|持续|用时|花费?)\s*(?:\d+|[一二两三四五六七八九十]+)分(?:钟)?/g, '');
+  title = title.replace(/(?:从)?(?:今天|明天|后天|大后天|今晚|今早|今夜|本周|这周|下周|星期[一二三四五六日天]|周[一二三四五六日天]|\d{1,2}月\d{1,2}[日号]?)?\s*(?:凌晨|早上|上午|中午|下午|傍晚|晚上)?\s*\d{1,2}(?:点|:|：)\d{0,2}(?:分|半)?\s*(?:到|至|—|－|-)\s*(?:凌晨|早上|上午|中午|下午|傍晚|晚上)?\s*\d{1,2}(?:点|:|：)\d{0,2}(?:分|半)?/g, '');
+  title = title.replace(/(?:今天|明天|后天|大后天|今晚|今早|今夜|本周|这周|下周|星期[一二三四五六日天]|周[一二三四五六日天]|\d{1,2}月\d{1,2}[日号]?)/g, '');
+  title = title.replace(/(?:凌晨|早上|上午|中午|下午|傍晚|晚上)?\s*(?:\d{1,2}|[一二两三四五六七八九十]+)(?:点|:|：)(?:半|\d{1,2})?(?:分)?(?:之前|以前|前|左右)?/g, '');
+  title = title.replace(/^(?:凌晨|早上|上午|中午|下午|傍晚|晚上|之前|以前|前|左右)+/g, '');
+  title = title.replace(/^(?:要|得|需要|必须|打算|准备去|去|把|将|给我|帮我|记得|提醒我)+/g, '');
+  title = title.replace(/(?:还有个事|还有一件事|有个事|有一件事|这件事|这件事情)$/g, '');
+  title = title.replace(/^[，,。；;、\s]+|[，,。；;、\s]+$/g, '').replace(/\s{2,}/g, ' ');
+  return !title || /^(?:个事|件事|有事|事|安排)$/.test(title) ? '补充具体事项' : title;
 }
 
 export function parseCapture(raw, now = new Date()) {
@@ -108,12 +117,14 @@ export function parseCapture(raw, now = new Date()) {
       when = at(when, time?.hour ?? defaultHour, time?.minute ?? 0);
     }
     const duration = durationFromWords(fragment);
+    const title = summarizeTitle(fragment);
     return {
-      title: usefulTitle(fragment),
+      title,
+      sourceText: fragment,
       kind: fixed ? 'event' : 'task',
       time: when ? `${localDate(when)}T${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')}` : '',
       duration: duration || (fixed ? 60 : 45),
-      inferred: !date || !duration || (!time && fixed),
+      inferred: !date || !duration || (!time && fixed) || title === '补充具体事项',
     };
   });
 }

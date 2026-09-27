@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b2545">
   <meta name="description" content="日序：把今天的事情理清，沿着自己的旅程向前走。">
   <title>日序 · 今日冒险</title>
@@ -40,7 +40,7 @@
       <section class="capture-card paper-frame" aria-labelledby="captureTitle">
         <div class="section-title"><svg aria-hidden="true"><use href="#i-book"/></svg><h2 id="captureTitle">把脑中的事先放这里</h2></div>
         <label class="sr-only" for="captureInput">输入你想整理的事情</label>
-        <div class="capture-row"><textarea id="captureInput" rows="2" placeholder="例如：明天下午要给导师回邮件……"></textarea><button id="voiceButton" class="voice-button" type="button" aria-label="开始语音输入" aria-pressed="false">🎙</button><button id="organizeButton" class="navy-button" type="button">整理并确认</button></div>
+        <div class="capture-row"><textarea id="captureInput" rows="2" placeholder="写下想安排的事…"></textarea><button id="voiceButton" class="voice-button" type="button" aria-label="开始语音输入" aria-pressed="false">🎙</button><button id="organizeButton" class="navy-button" type="button">整理并确认</button></div>
         <p id="captureMessage" class="field-note" role="status">可以打字或语音输入，加入计划前会请你确认。</p>
       </section>
       <section class="schedule-card paper-frame" id="schedule" aria-labelledby="scheduleTitle">
@@ -74,7 +74,7 @@
   <dialog id="reviewSection" class="quest-dialog" aria-labelledby="reviewTitle">
     <div class="quest-dialog-inner">
       <div class="quest-banner"><span aria-hidden="true">✦</span><h2 id="reviewTitle">奇遇任务出现了</h2><span aria-hidden="true">✦</span></div>
-      <div class="quest-scroll"><p id="questTiming" class="quest-timing"></p><div id="questLead" class="quest-lead"></div><div class="quest-suggestion"><h3>✦ 日序建议</h3><p id="questSuggestion">先核对任务名称、时间和预计时长。确认后再加入计划。</p><div id="questPlan" class="plan-preview" hidden></div></div><p class="section-description">这次整理出的事项</p><div id="draftList" class="draft-list"></div></div>
+      <div class="quest-scroll"><p id="captureSummary" class="capture-summary"></p><p id="questTiming" class="quest-timing"></p><div id="questLead" class="quest-lead"></div><div class="quest-suggestion"><h3>✦ 日序建议</h3><p id="questSuggestion">先核对任务名称、时间和预计时长。确认后再加入计划。</p><div id="questPlan" class="plan-preview" hidden></div></div><p class="section-description">整理结果 · 可逐项修改</p><div id="draftList" class="draft-list"></div></div>
       <div class="review-footer"><button id="confirmDraftButton" class="gold-button" type="button">接受安排</button><button id="discardDraftButton" class="light-button" type="button">先放一放</button><button id="deleteCaptureButton" class="delete-capture-button" type="button">删除本次输入</button><p id="reviewFootnote">未确认的内容不会加入计划</p></div>
     </div>
   </dialog>

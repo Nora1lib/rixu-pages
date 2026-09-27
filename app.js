@@ -1,4 +1,4 @@
-import { parseCapture, planTasks, formatDateTime, dayKey, timeLabel } from "./planner.js";
+import { parseCapture, summarizeTitle, planTasks, formatDateTime, dayKey, timeLabel } from "./planner.js";
 import { recognizeWithDeepSeek } from "./deepseek.js";
 
 const $ = (selector) => document.querySelector(selector);
@@ -426,12 +426,20 @@ function renderDrafts() {
     const remove = button("移除", () => { drafts.splice(index, 1); renderDrafts(); });
     remove.className = "remove-draft";
     card.append(remove);
-    if (draft.inferred || draft.journeySuggested) card.append(make("p", "draft-note", [draft.inferred ? "部分时间或时长是初步推测，请核对。" : "", draft.journeySuggested ? "已识别与「" + draft.journeyName + "」相关，确认后加入该旅程。" : ""].filter(Boolean).join(" ")));
+    if (draft.inferred || draft.journeySuggested) card.append(make("p", "draft-note", [draft.title === "补充具体事项" ? "原文没有说明具体行动，请先填写事项名称。" : draft.inferred ? "部分时间或时长是初步推测，请核对。" : "", draft.journeySuggested ? "已识别与「" + draft.journeyName + "」相关，确认后加入该旅程。" : ""].filter(Boolean).join(" ")));
     host.append(card);
   });
   $("#confirmDraftButton").disabled = drafts.length === 0;
   const totalMinutes = drafts.reduce((sum, item) => sum + Math.max(10, Number(item.duration) || 45), 0);
   const adventure = drafts.find((item) => item.questType === "adventure");
+  const summaryParts = ["提炼出 " + drafts.length + " 件事项"];
+  const fixedCount = drafts.filter((item) => item.kind === "event").length;
+  const journeyCount = drafts.filter((item) => ["main", "side"].includes(item.questType)).length;
+  if (fixedCount) summaryParts.push(fixedCount + " 件固定日程");
+  if (journeyCount) summaryParts.push(journeyCount + " 件关联长期旅程");
+  if (adventure) summaryParts.push("含临期奇遇");
+  summaryParts.push("预计共 " + totalMinutes + " 分钟");
+  $("#captureSummary").textContent = summaryParts.join(" · ");
   $("#reviewTitle").textContent = adventure ? "奇遇任务出现了" : "任务已整理好";
   $("#reviewSection").classList.toggle("has-adventure", Boolean(adventure));
   $("#reviewFootnote").textContent = adventure ? "过时后从当前地图移入回顾，不会悄悄删除。" : "先放一放会移入收纳箱，之后可以继续整理。";
@@ -479,15 +487,21 @@ async function startCapture(text = $("#captureInput").value) {
       try { drafts = await recognizeWithDeepSeek(text, deepSeekKey); modelUsed = true; }
       catch { toast("DeepSeek 暂不可用，已改用本地识别；请核对草稿。"); }
     }
-    if (!modelUsed) drafts = parseCapture(text).map((draft) => {
-      const questType = inferredQuest(draft.title, draft.kind, draft.time, draft.duration);
-      return { ...draft, questType, priority: "auto", journeyName: ["main", "side"].includes(questType) ? inferredJourneyTitle(draft.title, questType) : "" };
-    });
+    if (!modelUsed) {
+      $("#captureMessage").textContent = "正在提炼事项、时间和任务归属…";
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      drafts = parseCapture(text).map((draft) => {
+        const questType = inferredQuest(draft.sourceText || draft.title, draft.kind, draft.time, draft.duration);
+        return { ...draft, questType, priority: "auto", journeyName: ["main", "side"].includes(questType) ? inferredJourneyTitle(draft.title, questType) : "" };
+      });
+    }
     drafts = drafts.map((draft) => {
-      const journey = relatedJourney(draft.title);
+      const title = summarizeTitle(draft.title);
+      const source = draft.sourceText || draft.title;
+      const journey = relatedJourney(title);
       const related = journey && draft.kind === "task" && draft.questType !== "daily";
-      const recordState = draft.recordState || (/已经|已完成|结束了|刚才.*(?:完成|结束)|补录.*(?:完成|结束)/.test(draft.title) ? "completed" : /正在|进行中|开始了/.test(draft.title) ? "ongoing" : "future");
-      return { ...draft, questType: related ? journey.kind : recordState === "completed" && draft.questType === "adventure" ? "normal" : draft.questType,
+      const recordState = draft.recordState || (/已经|已完成|结束了|刚才.*(?:完成|结束)|补录.*(?:完成|结束)/.test(source) ? "completed" : /正在|进行中|开始了/.test(source) ? "ongoing" : "future");
+      return { ...draft, title, sourceText: source, inferred: draft.inferred || title === "补充具体事项", questType: related ? journey.kind : recordState === "completed" && draft.questType === "adventure" ? "normal" : draft.questType,
         journeyName: related ? journey.title : draft.journeyName || "", journeySuggested: Boolean(related), recordState };
     });
   } finally { captureBusy = false; $("#organizeButton").disabled = false; }
@@ -512,7 +526,7 @@ function confirmDrafts() {
   const additions = [];
   const next = clone(state);
   for (const draft of drafts) {
-    if (!draft.title.trim()) { toast("有事项还没有名称，请补充或移除。"); return; }
+    if (!draft.title.trim() || draft.title.trim() === "补充具体事项") { toast("请先补充具体要做的事，或移除这条草稿。"); return; }
     if (draft.kind === "event" && !draft.time) { toast("固定事项需要确认日期和时间。"); return; }
     const parsed = draft.time ? new Date(draft.time) : null;
     if (parsed && Number.isNaN(parsed.getTime())) { toast("请检查日期和时间。"); return; }
