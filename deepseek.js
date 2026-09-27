@@ -3,28 +3,21 @@ import { parseCapture, dayKey } from "./planner.js";
 const pad = (value) => String(value).padStart(2, "0");
 const localStamp = (date) => `${dayKey(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 
-export async function recognizeWithDeepSeek(text, key, now = new Date()) {
+const API_URL = "https://rixu-ai-service-2026.valerienora11.chatgpt.site/api/recognize";
+
+export async function recognizeWithDeepSeek(text, now = new Date()) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 16000);
   try {
-    const response = await fetch("https://api.deepseek.com/chat/completions", {
+    const response = await fetch(API_URL, {
       method: "POST",
       signal: controller.signal,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model: "deepseek-flash",
-        response_format: { type: "json_object" },
-        temperature: 0.1,
-        max_tokens: 1200,
-        messages: [
-          { role: "system", content: `你是日程提取智能体。只返回 JSON 对象 {"tasks":[{"sourceText":"原文对应片段","title":"事项名","kind":"task或event","time":"YYYY-MM-DDTHH:mm或空字符串","duration":45,"questType":"adventure或normal或main或side或daily","journeyName":"长期旅程名或空","priority":"auto或high或medium或low","recordState":"future或ongoing或completed"}]}。设备本地当前时间：${localStamp(now)}；时区：${Intl.DateTimeFormat().resolvedOptions().timeZone}。今天、今晚、今夜等明确指设备当前日期，即使所说时刻已经过去，也不可擅自移到明天；不明确的过时时刻可以推到明天。不要因“还有个事”“还有一件事”这样的同一句尾语拆出独立任务；只有明确的多个行动才拆分。固定会议/面试等用 event；需要执行的动作用 task。今天内到期且紧急用 adventure；近期普通事项用 normal；长期重要目标用 main，次要长期目标用 side；明确每天重复用 daily。识别“已经结束、刚完成”为 completed，“正在进行、刚开始”为 ongoing，并按开始至结束时间计算时长。不要臆造精确时间；不明时留空。输出必须是合法 json。` },
-          { role: "user", content: text.slice(0, 4000) }
-        ]
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text.slice(0, 2000), localNow: localStamp(now), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai" })
     });
-    if (!response.ok) throw new Error(`DeepSeek ${response.status}`);
+    if (!response.ok) throw new Error(`智能识别 ${response.status}`);
     const payload = await response.json();
-    const parsed = JSON.parse(payload.choices?.[0]?.message?.content || "{}");
+    const parsed = payload;
     if (!Array.isArray(parsed.tasks) || !parsed.tasks.length || parsed.tasks.length > 12) throw new Error("模型返回格式无效");
     return parsed.tasks.map((item) => {
       if (!item || typeof item.title !== "string" || !item.title.trim()) throw new Error("模型返回格式无效");

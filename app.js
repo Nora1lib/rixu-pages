@@ -125,7 +125,6 @@ let undo = null;
 let proposed = null;
 let captureText = "";
 let captureDeferredId = null;
-let deepSeekKey = "";
 let captureBusy = false;
 let toastTimer;
 let activeEditId = null;
@@ -482,11 +481,9 @@ async function startCapture(text = $("#captureInput").value) {
   captureText = text.trim();
   let modelUsed = false;
   try {
-    if (deepSeekKey) {
-      $("#captureMessage").textContent = "正在智能识别，请稍候…";
-      try { drafts = await recognizeWithDeepSeek(text, deepSeekKey); modelUsed = true; }
-      catch { toast("DeepSeek 暂不可用，已改用本地识别；请核对草稿。"); }
-    }
+    $("#captureMessage").textContent = "正在智能识别，请稍候…";
+    try { drafts = await recognizeWithDeepSeek(text); modelUsed = true; }
+    catch { toast("智能识别暂不可用，已改用本地识别；请核对草稿。"); }
     if (!modelUsed) {
       $("#captureMessage").textContent = "正在提炼事项、时间和任务归属…";
       await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -820,19 +817,6 @@ $("#confirmDraftButton").addEventListener("click", confirmDrafts);
 $("#changesConfirmButton").addEventListener("click", applyProposal);
 $("#changesCancelButton").addEventListener("click", () => { proposed = null; $("#changesDialog").close(); });
 $("#settingsButton").addEventListener("click", () => $("#settingsDialog").showModal());
-$("#saveDeepSeekKey").addEventListener("click", () => {
-  const key = $("#deepSeekKey").value.trim();
-  if (!key) { toast("请先输入 DeepSeek API 密钥。"); return; }
-  deepSeekKey = key;
-  $("#deepSeekKey").value = "";
-  $("#deepSeekStatus").textContent = "本次页面已启用 DeepSeek 智能识别";
-  toast("智能识别已启用；密钥只在本页内存中使用。");
-});
-$("#clearDeepSeekKey").addEventListener("click", () => {
-  deepSeekKey = ""; $("#deepSeekKey").value = "";
-  $("#deepSeekStatus").textContent = "当前使用本地识别";
-  toast("已关闭智能识别。");
-});
 $("#themeSelect").addEventListener("change", (event) => { localStorage.setItem("rixu.theme", event.target.value); setTheme(); });
 $("#scheduleMoreButton").addEventListener("click", () => setView("schedule"));
 $("#journeyShortcut").addEventListener("click", () => setView("journey"));

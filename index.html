@@ -113,7 +113,7 @@
       <label class="setting-row"><span><strong>背景时间</strong><small>跟随当前时间，或手动选择远足与扎营。</small></span><select id="themeSelect"><option value="auto">自动切换</option><option value="day">白天 · 远足</option><option value="night">夜间 · 扎营</option></select></label>
       <label class="setting-row"><span><strong>临期提醒</strong><small>页面打开时显示柔和提示；重要事项会更早提醒。</small></span><input id="reminderToggle" type="checkbox" checked></label>
       <label class="setting-row"><span><strong>提醒方式</strong><small>声音需要手动开启，受手机浏览器播放限制。</small></span><select id="reminderMode"><option value="visual">渐入提示</option><option value="sound">渐入提示＋轻音</option></select></label>
-      <div class="ai-setting"><strong>DeepSeek 智能识别</strong><p>可选。启用后，整理时只把本次输入和设备时间发给 DeepSeek。密钥仅保留在当前页面内存，刷新即清除；不会写入仓库或备份。</p><label class="sr-only" for="deepSeekKey">DeepSeek API 密钥</label><input id="deepSeekKey" type="password" autocomplete="off" spellcheck="false" placeholder="在此输入 DeepSeek API 密钥"><div class="ai-setting-actions"><button id="saveDeepSeekKey" class="navy-button" type="button">本次会话启用</button><button id="clearDeepSeekKey" class="light-button" type="button">关闭</button></div><small id="deepSeekStatus">当前使用本地识别</small></div>
+      <div class="ai-setting"><strong>智能识别</strong><p>整理时只发送本次输入与设备时间，用来归纳任务、识别日期和时长。个人任务仍保存在本机；服务暂不可用时会自动使用本地规则。</p></div>
       <div class="settings-buttons"><button id="exportButton" class="light-button" type="button">导出数据</button><label class="light-button import-label">导入数据<input id="importInput" type="file" accept="application/json,.json" hidden></label></div>
       <details class="capture-history"><summary>查看已确认的原文</summary><div id="captureHistory"></div></details>
       <button id="clearButton" class="danger-button" type="button">清空本机数据</button>
