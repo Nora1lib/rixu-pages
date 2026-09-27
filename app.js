@@ -1,6 +1,5 @@
 import { parseCapture, summarizeTitle, planTasks, formatDateTime, dayKey, timeLabel } from "./planner.js";
 import { recognizeWithDeepSeek } from "./deepseek.js";
-import { renderScheduleView } from "./schedule-view.js";
 
 const $ = (selector) => document.querySelector(selector);
 const KEY = "rixu.web.v1";
@@ -207,12 +206,62 @@ function renderNext() {
   actions.hidden = false;
 }
 function renderSchedule() {
-  const { explanation } = renderScheduleView({
-    tasks: state.tasks, journeys: state.journeys,
-    list: $("#scheduleList"), dailyList: $("#dailyList"), workSummary: $("#workSummary"),
-    fullView: document.body.dataset.view === "schedule", onDailyToggle: toggleDaily
-  });
-  $("#busyExplanation").textContent = explanation;
+  const fullView = document.body.dataset.view === "schedule";
+  const horizon = Date.now() + (fullView ? 7 * 24 : 72) * 3600000;
+  const items = state.tasks.filter((task) => task.status === "pending" && task.scheduledAt && !isExpiredAdventure(task) &&
+    task.questType !== "daily" && new Date(task.scheduledAt).getTime() <= horizon)
+    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  if (!fullView) items.splice(3);
+  const host = $("#scheduleList");
+  host.replaceChildren();
+  if (!items.length) {
+    host.append(make("div", "empty-state", "近期还没有安排。固定事项和可调整任务会显示在这里。"));
+  }
+  let currentDay = "";
+  let group;
+  for (const task of items) {
+    const key = dayKey(task.scheduledAt);
+    if (key !== currentDay) {
+      currentDay = key;
+      group = make("div", "schedule-day");
+      const date = new Date(key + "T12:00:00");
+      group.append(make("div", "day-label", new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: "long" }).format(date)));
+      host.append(group);
+    }
+    const row = make("div", "schedule-item " + (task.kind === "event" ? "event" : isAdventure(task) ? "adventure" : "flexible"));
+    const info = make("div");
+    info.append(make("div", "schedule-title", task.title));
+    const detail = task.kind === "event" ? "已保护的固定时间" : questOf(task) + " · 预计 " + task.plannedMinutes + " 分钟";
+    info.append(make("div", "schedule-detail", detail + (task.deadline ? " · 截止 " + formatDateTime(task.deadline) : "")));
+    const pill = make("span", "status-pill " + (task.kind === "event" ? "event" : isAdventure(task) ? "adventure" : "flexible"),
+      task.kind === "event" ? "▣ 固定事项" : isAdventure(task) ? "✦ 奇遇 · " + timeLabel(task.deadline) + " 前" : "⇄ 可调整");
+    row.append(make("span", "schedule-time", timeLabel(task.scheduledAt)), info, pill);
+    group.append(row);
+  }
+  const todayKey = dayKey(new Date());
+  const workMinutes = state.tasks.filter((task) => task.status === "pending" && task.scheduledAt && dayKey(task.scheduledAt) === todayKey && task.questType !== "daily" && !/聚餐|散步|休息|娱乐|旅行/.test(task.title))
+    .reduce((sum, task) => sum + task.plannedMinutes, 0);
+  const hours = workMinutes ? (Math.ceil(workMinutes / 30) / 2).toString() : "0";
+  const urgent = state.tasks.filter((task) => isAdventure(task) && task.deadline && new Date(task.deadline).getTime() <= Date.now() + 24 * 3600000).length;
+  const level = workMinutes || urgent ? Math.max(1, Math.min(5, Math.ceil(workMinutes / 75) + (urgent ? 1 : 0))) : 0;
+  const summary = $("#workSummary"); summary.replaceChildren();
+  summary.append(make("span", "", level ? "预计工作 " + hours + " 小时" : "今日空闲"));
+  if (level) {
+    const mangoes = make("span", "mango-strip level-" + level);
+    mangoes.setAttribute("role", "img"); mangoes.setAttribute("aria-label", "忙碌度 " + level + "/5");
+    for (let i = 0; i < level; i++) {
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use"); use.setAttribute("href", "#i-mango"); icon.append(use); mangoes.append(icon);
+    }
+    summary.append(mangoes);
+  }
+  $("#busyExplanation").textContent = level ? "今天预计工作约 " + hours + " 小时，临近截止的奇遇任务 " + urgent + " 件，忙碌度为 " + level + "/5。建议保留任务之间的缓冲时间；忙碌时可把支线顺延。" : "今天还没有已安排的工作或临近截止任务。忙碌度暂不评级。";
+  const daily = $("#dailyList"); daily.replaceChildren();
+  for (const task of state.tasks.filter((item) => item.status === "pending" && item.questType === "daily")) {
+    const row = make("label", "daily-item" + (isDailySkipped(task) ? " skipped" : ""));
+    const check = make("input"); check.type = "checkbox"; check.checked = isDailyDone(task); check.addEventListener("change", () => toggleDaily(task.id));
+    row.append(check, make("span", "", "每日 · " + task.title + (isDailySkipped(task) ? "（今天先略过）" : ""))); daily.append(row);
+  }
 }
 function renderJourneys() {
   const host = $("#journeyList"); host.replaceChildren();

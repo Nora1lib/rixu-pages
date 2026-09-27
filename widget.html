@@ -9,7 +9,6 @@
   <script type="module" src="./widget.js"></script>
 </head>
 <body>
-  <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><symbol id="i-mango" viewBox="0 0 24 28"><path fill="#123353" d="M9 5h4l2-4 3 1-2 5c7 5 7 17-4 20C2 28-1 16 5 9z"/><path fill="currentColor" d="M9 8c-6 3-7 15 1 16 9 1 12-10 6-15-2-2-5-2-7-1z"/><path fill="#5b9c5a" d="M12 6c0-5-4-5-6-4 0 3 2 5 6 4z"/></symbol></svg>
   <div class="sky" aria-hidden="true"></div>
   <main class="widget-shell">
     <header class="widget-header">
@@ -28,12 +27,8 @@
       <p id="captureMessage" role="status">在这里核对结果并确认入列。</p>
     </form>
     <section class="timeline-card" aria-labelledby="timelineHeading">
-      <div class="timeline-head"><div><h2 id="timelineHeading">未来 72 小时</h2><span id="timelineCount">0 项</span></div><button id="workSummary" class="work-summary" type="button" aria-label="查看今日预计工作时间与忙碌度"></button></div>
-      <div class="timeline-scroll">
-        <div id="timelineList" class="timeline-list"></div>
-        <div id="pendingGroup" class="pending-group" hidden><strong id="pendingHeading">待安排</strong><div id="pendingList"></div></div>
-      </div>
-      <p id="busyExplanation" class="busy-explanation" hidden></p>
+      <div class="timeline-head"><h2 id="timelineHeading">未来 72 小时</h2><span id="timelineCount">0 项</span></div>
+      <div id="timelineList" class="timeline-list"></div>
     </section>
   </main>
   <dialog id="reviewDialog" aria-labelledby="reviewHeading">
