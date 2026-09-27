@@ -16,6 +16,7 @@
     <symbol id="i-mountain" viewBox="0 0 64 64"><path fill="#09254b" d="M2 51 24 14l12 19 8-11 18 29v7H2z"/><path fill="#f8d675" d="M7 51 24 21l18 30z"/><path fill="#e7f4f2" d="m24 21 6 10-7-3-5 5z"/><path fill="#5d8e78" d="M5 51h55v7H5z"/><path fill="#b96436" d="M23 10h4v14h-4z"/><path fill="#f8d675" d="M27 11h12v9H27z"/></symbol>
     <symbol id="i-book" viewBox="0 0 32 32"><path fill="#0b2852" d="M4 3h23v26H4z"/><path fill="#f4c861" d="M8 6h17v20H8z"/><path fill="#0b2852" d="M11 10h11v2H11zm0 5h11v2H11zm0 5h8v2h-8z"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 32 32"><path fill="#0b2852" d="M3 5h26v25H3z"/><path fill="#f9ecd2" d="M6 11h20v16H6z"/><path fill="#f2c262" d="M6 8h20v5H6z"/><path fill="#0b2852" d="M9 2h3v8H9zm11 0h3v8h-3zM9 16h4v4H9zm8 0h4v4h-4zM9 22h4v3H9z"/></symbol>
+    <symbol id="i-nav-calendar" viewBox="0 0 32 32"><path fill="currentColor" d="M4 5h4V2h4v3h8V2h4v3h4v24H4zm4 9v11h16V14z"/><path fill="#f4c861" d="M8 9h16v3H8zm2 8h4v4h-4zm7 0h4v4h-4z"/></symbol>
     <symbol id="i-sprout" viewBox="0 0 32 32"><path fill="#0b2852" d="M14 17h4v11h-4z"/><path fill="#4f9874" d="M15 17C5 19 4 12 5 7c5-1 11 1 11 10zm2-1c0-9 6-12 11-10 1 6-2 12-11 10z"/><path fill="#9c6a3f" d="M5 26h23v4H5z"/></symbol>
     <symbol id="i-home" viewBox="0 0 32 32"><path fill="currentColor" d="M13 2h6v3h4v4h4v4h3v4h-3v12H5V17H2v-4h3V9h4V5h4zM9 17v8h5v-7h4v7h5v-8z"/></symbol>
     <symbol id="i-map" viewBox="0 0 32 32"><path fill="currentColor" d="M2 5h4v2h5V5h5v2h5V5h5v2h4v21h-4v-2h-5v2h-5v-2h-5v2H6v-2H2zm4 5v13h5V10zm10 0v13h5V10zm10 0v13h1V10z"/><path fill="#f4c861" d="M13 12h6v3h-2v5h-2v-5h-2z"/></symbol>
@@ -26,8 +27,8 @@
   <div class="scene" aria-hidden="true"></div>
   <div class="app-shell" id="today">
     <header class="sky-header">
-      <div class="date-icon date-emoji" aria-hidden="true">🗓️</div>
-      <div class="date-copy"><div class="date-line"><strong id="todayLabel"></strong><span id="weekdayLabel"></span></div><div class="date-detail"><span id="lunarLabel"></span><span id="weekendLabel"></span></div></div>
+      <div id="dateSkyIcon" class="date-icon date-emoji" aria-hidden="true">🌙</div>
+      <div class="date-copy"><div class="date-line"><strong id="todayLabel"><span id="monthNumber" class="date-number"></span><span class="date-unit">月</span><span id="dayNumber" class="date-number"></span><span class="date-unit">日</span></strong><span id="weekdayLabel"></span></div><div class="date-detail"><span id="lunarLabel"></span><span id="weekendLabel"></span></div></div>
     </header>
     <main>
       <section class="next-card pixel-frame" aria-labelledby="nextTitle">
@@ -66,7 +67,7 @@
   <nav class="bottom-nav" aria-label="主要页面">
     <a class="active" href="#today" data-nav="today"><svg aria-hidden="true"><use href="#i-home"/></svg><span>今日</span></a>
     <a href="#journey" data-nav="journey"><svg aria-hidden="true"><use href="#i-map"/></svg><span>旅程</span></a>
-    <a href="#schedule" data-nav="schedule"><svg aria-hidden="true"><use href="#i-calendar"/></svg><span>日程</span></a>
+    <a href="#schedule" data-nav="schedule"><svg aria-hidden="true"><use href="#i-nav-calendar"/></svg><span>日程</span></a>
     <a href="#inbox" data-nav="inbox"><svg aria-hidden="true"><use href="#i-box"/></svg><span>收纳箱</span></a>
     <button id="settingsButton" type="button"><svg aria-hidden="true"><use href="#i-settings"/></svg><span>设置</span></button>
   </nav>
@@ -74,7 +75,7 @@
     <div class="quest-dialog-inner">
       <div class="quest-banner"><span aria-hidden="true">✦</span><h2 id="reviewTitle">奇遇任务出现了</h2><span aria-hidden="true">✦</span></div>
       <div class="quest-scroll"><p id="questTiming" class="quest-timing"></p><div id="questLead" class="quest-lead"></div><div class="quest-suggestion"><h3>✦ 日序建议</h3><p id="questSuggestion">先核对任务名称、时间和预计时长。确认后再加入计划。</p><div id="questPlan" class="plan-preview" hidden></div></div><p class="section-description">这次整理出的事项</p><div id="draftList" class="draft-list"></div></div>
-      <div class="review-footer"><button id="confirmDraftButton" class="gold-button" type="button">接受安排</button><button id="discardDraftButton" class="light-button" type="button">先放一放</button><p id="reviewFootnote">未确认的内容不会加入计划</p></div>
+      <div class="review-footer"><button id="confirmDraftButton" class="gold-button" type="button">接受安排</button><button id="discardDraftButton" class="light-button" type="button">先放一放</button><button id="deleteCaptureButton" class="delete-capture-button" type="button">删除本次输入</button><p id="reviewFootnote">未确认的内容不会加入计划</p></div>
     </div>
   </dialog>
   <dialog id="journeyDialog" class="settings-dialog" aria-labelledby="journeyDialogTitle">

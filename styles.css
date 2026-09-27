@@ -140,3 +140,10 @@ body:not([data-view="today"]) .journey-shortcut{display:none}
 .ai-setting-actions button{min-height:39px;font-size:.84rem}
 .ai-setting small{color:#55718d}
 @media(max-width:430px){.date-emoji{font-size:2.15rem}.date-line strong{font-size:2.55rem}.date-line span{font-size:1.06rem}.plan-preview-row{grid-template-columns:57px minmax(0,1fr) 13px 57px}}
+/* Match the date glyphs to the numerals while keeping the approved pixel font. */
+.date-line #todayLabel{display:inline-flex;align-items:baseline;gap:0;white-space:nowrap}
+.date-line #todayLabel .date-number{font:inherit;font-variant-numeric:tabular-nums}
+.date-line #todayLabel .date-unit{font:inherit;font-size:.74em;line-height:1}
+.date-line #todayLabel .date-unit:nth-child(2){margin-right:.12em}
+.date-detail #lunarLabel{font-size:.9em}
+.delete-capture-button{min-height:38px;border:0;background:transparent;color:#a04b45;font-size:.82rem;font-weight:750;text-decoration:underline;text-underline-offset:3px}

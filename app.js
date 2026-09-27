@@ -62,7 +62,9 @@ function inferredJourneyTitle(title, kind) {
 function setTheme() {
   const pref = localStorage.getItem("rixu.theme") || "auto";
   const hour = new Date().getHours();
-  document.body.dataset.theme = pref === "auto" ? (hour >= 6 && hour < 18 ? "day" : "night") : pref;
+  const theme = pref === "auto" ? (hour >= 6 && hour < 18 ? "day" : "night") : pref;
+  document.body.dataset.theme = theme;
+  $("#dateSkyIcon").textContent = theme === "day" ? "☀️" : "🌙";
   $("#themeSelect").value = pref;
 }
 function normalize(item) {
@@ -355,7 +357,8 @@ function setView(view, updateHash = true) {
 }
 function render() {
   const now = new Date();
-  $("#todayLabel").textContent = (now.getMonth() + 1) + "月" + now.getDate() + "日";
+  $("#monthNumber").textContent = now.getMonth() + 1;
+  $("#dayNumber").textContent = now.getDate();
   $("#weekdayLabel").textContent = new Intl.DateTimeFormat("zh-CN", { weekday: "long" }).format(now).replace("星期", "周");
   try {
     const lunar = new Intl.DateTimeFormat("zh-CN-u-ca-chinese", { month: "long", day: "numeric" }).format(now);
@@ -783,8 +786,21 @@ function deferCurrentCapture() {
   $("#captureInput").value = "";
   $("#captureMessage").textContent = "已放入收纳箱，可以稍后继续整理。";
 }
+function deleteCurrentCapture() {
+  if (!confirm("删除这次尚未敲定的输入？已编辑的草稿也会一起丢弃。")) return;
+  if (captureDeferredId) {
+    const next = clone(state);
+    next.deferredCaptures = next.deferredCaptures.filter((capture) => capture.id !== captureDeferredId);
+    commit(next, "已删除未敲定的输入，可在本次页面中撤销。");
+  }
+  drafts = []; proposed = null; captureText = ""; captureDeferredId = null;
+  $("#captureInput").value = "";
+  $("#captureMessage").textContent = "这次输入已删除，可以重新记录。";
+  $("#reviewSection").close();
+}
 $("#organizeButton").addEventListener("click", () => startCapture());
 $("#discardDraftButton").addEventListener("click", () => { deferCurrentCapture(); $("#reviewSection").close(); });
+$("#deleteCaptureButton").addEventListener("click", deleteCurrentCapture);
 $("#reviewSection").addEventListener("close", () => { if (drafts.length) deferCurrentCapture(); });
 $("#confirmDraftButton").addEventListener("click", confirmDrafts);
 $("#changesConfirmButton").addEventListener("click", applyProposal);
