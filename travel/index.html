@@ -1,49 +1,16 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f3eb">
-  <meta name="description" content="在自己的浏览器中整理旅行计划，可导入导出备份。">
-  <title>我的旅行计划 · 时序</title>
-  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./travel.css">
-  <script type="module" src="./travel.js"></script>
-</head>
-<body>
-  <header class="topbar"><a class="brand" href="../" aria-label="返回时序主页"><span class="brandmark">✧</span> 时序</a><span>我的旅行计划</span></header>
-  <main class="wrap">
-    <section id="landing" class="landing">
-      <div class="eyebrow">TRAVEL PLAN PAGE</div>
-      <h1>规划下一段旅程</h1>
-      <p class="lead">为不同旅程分别整理行程、待办和费用。内容只保存在当前浏览器中。</p>
-      <div class="panel create-panel"><h2>创建新旅程</h2><p>先建立空白页面，目的地和日期可以稍后再写。</p><button id="createTrip" class="primary" type="button">＋ 创建空白旅程</button></div>
-      <div class="panel"><h2>我的旅程</h2><div id="recentTrips" class="recent-list"><p class="muted">还没有旅程。</p></div></div>
-      <div class="panel"><h2>备份与迁移</h2><p class="muted">浏览器数据清除后无法恢复。建议定期导出备份；换设备时可导入备份文件。</p><button id="importTrip" type="button" class="quiet-button">导入旅程备份</button><input id="importFile" type="file" accept="application/json,.json" hidden></div>
-    </section>
-    <section id="tripView" hidden>
-      <div class="eyebrow">YOUR SHARED JOURNEY</div>
-      <div class="hero"><div><h1 id="tripHeading">未命名旅程</h1><p id="tripSubtitle">目的地待定 · 日期待定</p><p class="meta">内容仅存于当前浏览器</p></div><div class="hero-actions"><button id="exportTrip" type="button" class="primary">导出备份</button><a href="./" class="quiet-button">我的旅程</a></div></div>
-      <div id="status" class="status" role="status" aria-live="polite"></div>
-      <div class="grid">
-        <aside class="sidebar">
-          <div class="panel"><h2>旅程资料</h2><form id="settingsForm" class="stack">
-            <label>旅行名称<input name="title" maxlength="90" placeholder="例如：秋天的北海道"></label>
-            <label>目的地<input name="destination" maxlength="120" placeholder="城市、国家或路线"></label>
-            <div class="two"><label>开始日期<input name="startDate" type="date"></label><label>结束日期<input name="endDate" type="date"></label></div>
-            <label>旅行备注<textarea name="note" rows="3" maxlength="800" placeholder="想去的地方、集合信息等"></textarea></label>
-            <button type="submit">保存旅程资料</button>
-          </form></div>
-        </aside>
-        <div class="content">
-          <nav class="tabs" aria-label="旅程内容"><button type="button" class="selected" data-tab="schedule">行程</button><button type="button" data-tab="todo">待办</button><button type="button" data-tab="expense">记账</button></nav>
-          <section class="panel tab-panel" data-panel="schedule"><div class="section-head"><div><span class="eyebrow">DAY BY DAY</span><h2>安排旅行行程</h2></div></div><p class="muted">航班、住宿、门票和每日安排都可以记在这里。</p><form id="scheduleForm" class="stack"><input type="hidden" name="recordId"><div class="three"><label>日期<input name="date" type="date"></label><label>时间<input name="time" type="time"></label><label>类别<select name="category"><option>行程</option><option>航班</option><option>住宿</option><option>交通</option><option>餐饮</option><option>门票</option></select></label></div><label>安排名称<input name="title" maxlength="120" placeholder="例如：参观美术馆" required></label><div class="two"><label>地点<input name="place" maxlength="120"></label><label>相关链接<input name="link" type="url" maxlength="500" placeholder="https://"></label></div><label>备注<textarea name="note" rows="2" maxlength="1000"></textarea></label><div class="form-actions"><button type="submit">保存安排</button><button type="reset" class="quiet-button">清空表单</button></div></form><div id="scheduleList" class="item-list"></div></section>
-          <section class="panel tab-panel" data-panel="todo" hidden><span class="eyebrow">TO DO</span><h2>出发前待办</h2><form id="todoForm" class="inline-form"><label class="sr-only" for="todoText">待办事项</label><input id="todoText" name="text" maxlength="180" placeholder="例如：确认机票与护照" required><button type="submit">添加</button></form><div id="todoList" class="item-list"></div></section>
-          <section class="panel tab-panel" data-panel="expense" hidden><span class="eyebrow">EXPENSES</span><h2>旅费记录</h2><form id="expenseForm" class="stack"><input type="hidden" name="recordId"><label>费用名称<input name="title" maxlength="120" placeholder="例如：第一晚酒店" required></label><div class="two"><label>金额<input name="amount" type="number" min="0.01" step="0.01" required></label><label>币种<select name="currency"><option value="CNY">人民币</option><option value="USD">美元</option><option value="EUR">欧元</option><option value="JPY">日元</option></select></label></div><label>备注<input name="note" maxlength="300"></label><div class="form-actions"><button type="submit">保存费用</button><button type="reset" class="quiet-button">清空表单</button></div></form><div id="expenseList" class="item-list"></div></section>
-        </div>
-      </div>
-    </section>
-  </main>
-  <footer>参考 <a href="https://github.com/do-tongxue/Travel-Plan-Page" target="_blank" rel="noopener noreferrer">Travel-Plan-Page</a> · <a href="../">返回时序</a></footer>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f3eb" />
+    <meta name="description" content="整理旅行资料、行程、待办和费用。内容保存在当前浏览器。" />
+    <title>旅行计划</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <script type="module" crossorigin src="/rixu-pages/travel/assets/index-CQmahMJl.js"></script>
+    <link rel="stylesheet" crossorigin href="/rixu-pages/travel/assets/index-O0wea6Mn.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>
