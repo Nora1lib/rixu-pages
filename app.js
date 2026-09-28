@@ -186,14 +186,14 @@ function renderNext() {
   content.replaceChildren(); actions.replaceChildren();
   if (!task) {
     const title = make("h1", "", "从一件小事开始"); title.id = "nextTitle";
-    content.append(title, make("p", "", "写下想处理的事，日序会帮你找到下一步。"));
+    content.append(title, make("p", "", "写下想处理的事，时序会帮你找到下一步。"));
     actions.hidden = true; return;
   }
   const title = make("h1", "", task.title); title.id = "nextTitle";
   content.append(title);
   content.append(make("p", "next-meta", "归属：" + questOf(task) + " · " + priorityOf(task) + " · " + task.plannedMinutes + " 分钟"));
   content.append(make("p", "next-why", "排序依据：" + (task.kind === "event" ? "固定时间临近" : task.priority !== "auto" ? "你设为" + priorityOf(task) : task.deadline && new Date(task.deadline).getTime() - Date.now() < 3 * 3600000 ? "临近截止" : task.questType === "main" ? "主线推进" : task.scheduledAt ? "接近安排时间" : "可开始的下一步")));
-  const reason = task.kind === "event" ? "这是一项固定时间的日程，日序会保护原定时间。" : isAdventure(task) ? "截止时间临近，先为它留出这一段。" :
+  const reason = task.kind === "event" ? "这是一项固定时间的日程，时序会保护原定时间。" : isAdventure(task) ? "截止时间临近，先为它留出这一段。" :
     task.questType === "main" ? "这是主线旅程的下一步。" :
     task.questType === "daily" ? "完成今天的小行动，就能继续向前。" :
     task.scheduledAt ? "安排在 " + formatDateTime(task.scheduledAt) : "先从一个可完成的小步骤开始。";
@@ -445,7 +445,7 @@ function renderDrafts() {
   $("#reviewTitle").textContent = adventure ? "奇遇任务出现了" : "任务已整理好";
   $("#reviewSection").classList.toggle("has-adventure", Boolean(adventure));
   $("#reviewFootnote").textContent = adventure ? "过时后从当前地图移入回顾，不会悄悄删除。" : "先放一放会移入收纳箱，之后可以继续整理。";
-  $("#questSuggestion").textContent = adventure ? "为这件事留出约 " + adventure.duration + " 分钟。确认后，日序会重新安排可调整任务；固定事项不会移动。" :
+  $("#questSuggestion").textContent = adventure ? "为这件事留出约 " + adventure.duration + " 分钟。确认后，时序会重新安排可调整任务；固定事项不会移动。" :
     "这次共整理出 " + drafts.length + " 件事，预计约 " + totalMinutes + " 分钟。请核对时间、时长和任务归属。";
   const preview = $("#questPlan"); preview.replaceChildren(); preview.hidden = !adventure;
   if (adventure) {
@@ -856,7 +856,7 @@ $("#restoreButton").addEventListener("click", () => {
 $("#exportButton").addEventListener("click", () => {
   const blob = new Blob([JSON.stringify({ version: 2, ...state }, null, 2)], { type: "application/json" });
   const link = make("a"); link.href = URL.createObjectURL(blob);
-  link.download = "日序备份-" + dayKey(new Date()) + ".json"; link.click();
+  link.download = "时序备份-" + dayKey(new Date()) + ".json"; link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 });
 $("#importInput").addEventListener("change", async (event) => {
@@ -875,7 +875,7 @@ $("#importInput").addEventListener("change", async (event) => {
   event.target.value = "";
 });
 $("#clearButton").addEventListener("click", () => {
-  if (!confirm("确定清空本机所有日序事项吗？")) return;
+  if (!confirm("确定清空本机所有时序事项吗？")) return;
   commit(defaults(), "本机数据已清空，可在本次会话中撤销。");
   $("#settingsDialog").close();
 });

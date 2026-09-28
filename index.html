@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b2545">
-  <meta name="description" content="日序：把今天的事情理清，沿着自己的旅程向前走。">
-  <title>日序 · 今日冒险</title>
+  <meta name="description" content="时序：把今天的事情理清，沿着自己的旅程向前走。">
+  <title>时序 · 今日冒险</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230b2545'/%3E%3Cpath d='M8 48 26 19l10 15 7-9 13 23Z' fill='%23f6cf75' stroke='%23fff8e7' stroke-width='3'/%3E%3Cpath d='M8 51h48' stroke='%23fff8e7' stroke-width='4'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./styles.css">
@@ -33,7 +33,7 @@
     <main>
       <section class="next-card pixel-frame" aria-labelledby="nextTitle">
         <div class="hero-icon" aria-hidden="true"><img src="./assets/quest-mountain-flag.png" alt=""></div>
-        <div class="hero-text"><span class="soft-badge">现在先做</span><div id="nextStep" class="next-content"><h1 id="nextTitle">从一件小事开始</h1><p>写下想处理的事，日序会帮你找到下一步。</p></div></div>
+        <div class="hero-text"><span class="soft-badge">现在先做</span><div id="nextStep" class="next-content"><h1 id="nextTitle">从一件小事开始</h1><p>写下想处理的事，时序会帮你找到下一步。</p></div></div>
         <div id="nextActions" class="next-actions" hidden></div>
         <p class="hero-footnote">每一步都可以调整</p>
       </section>
@@ -62,7 +62,7 @@
         <button id="restoreButton" class="section-link" type="button" hidden>撤销上一步</button>
       </section>
     </main>
-    <footer class="page-footer">计划只保存在这台设备上 · 日序</footer>
+    <footer class="page-footer">计划只保存在这台设备上 · 时序</footer>
   </div>
   <nav class="bottom-nav" aria-label="主要页面">
     <a class="active" href="#today" data-nav="today"><svg aria-hidden="true"><use href="#i-home"/></svg><span>今日</span></a>
@@ -74,7 +74,7 @@
   <dialog id="reviewSection" class="quest-dialog" aria-labelledby="reviewTitle">
     <div class="quest-dialog-inner">
       <div class="quest-banner"><span aria-hidden="true">✦</span><h2 id="reviewTitle">奇遇任务出现了</h2><span aria-hidden="true">✦</span></div>
-      <div class="quest-scroll"><p id="captureSummary" class="capture-summary"></p><p id="questTiming" class="quest-timing"></p><div id="questLead" class="quest-lead"></div><div class="quest-suggestion"><h3>✦ 日序建议</h3><p id="questSuggestion">先核对任务名称、时间和预计时长。确认后再加入计划。</p><div id="questPlan" class="plan-preview" hidden></div></div><p class="section-description">整理结果 · 可逐项修改</p><div id="draftList" class="draft-list"></div></div>
+      <div class="quest-scroll"><p id="captureSummary" class="capture-summary"></p><p id="questTiming" class="quest-timing"></p><div id="questLead" class="quest-lead"></div><div class="quest-suggestion"><h3>✦ 时序建议</h3><p id="questSuggestion">先核对任务名称、时间和预计时长。确认后再加入计划。</p><div id="questPlan" class="plan-preview" hidden></div></div><p class="section-description">整理结果 · 可逐项修改</p><div id="draftList" class="draft-list"></div></div>
       <div class="review-footer"><button id="confirmDraftButton" class="gold-button" type="button">接受安排</button><button id="discardDraftButton" class="light-button" type="button">先放一放</button><button id="deleteCaptureButton" class="delete-capture-button" type="button">删除本次输入</button><p id="reviewFootnote">未确认的内容不会加入计划</p></div>
     </div>
   </dialog>
