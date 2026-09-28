@@ -44,3 +44,4 @@ body[data-view=schedule] .timeline-list{flex:1;max-height:none;overflow:auto}
 body[data-view=schedule] .widget-shell{height:auto;min-height:0;display:block}
 body[data-view=today] .timeline-card{max-height:calc(100dvh - 435px);min-height:115px}
 @media(max-height:650px){body[data-view=today] .widget-shell{height:calc(100dvh - 64px)}body[data-view=today] .timeline-card{max-height:none}}
+#widgetDeleteDialog h2{font-size:17px;margin:0}#widgetDeleteText{font-size:12px;line-height:1.5}#widgetDeleteDialog .review-actions button{border:1px solid #9daabb;border-radius:5px;background:#fff;color:#1a3e65;font-weight:750}#widgetDeleteDialog #widgetDeleteConfirm{background:#a34239;border-color:#853329;color:#fff}

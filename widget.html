@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b2545">
   <title>时序 · 桌面悬浮窗</title>
-  <link rel="stylesheet" href="./widget.css?v=22">
+  <link rel="stylesheet" href="./widget.css?v=23">
   <link rel="stylesheet" href="./schedule-controls.css?v=22">
   <style>
     .timeline-row{grid-template-columns:64px minmax(0,1fr) auto;gap:5px}
@@ -13,7 +13,7 @@
     .timeline-row .schedule-row-actions button{min-height:25px;padding:2px 4px}
     .timeline-row .schedule-row-actions .schedule-drag{padding:1px 7px 1px 3px}
   </style>
-  <script type="module" src="./widget-runtime.js?v=22"></script>
+  <script type="module" src="./widget-runtime.js?v=23"></script>
 </head>
 <body data-view="today">
   <div class="sky" aria-hidden="true"></div>
@@ -60,6 +60,7 @@
     <button type="button" data-widget-view="inbox"><span aria-hidden="true">▣</span>收纳箱</button>
     <button type="button" data-widget-view="settings"><span aria-hidden="true">⚙</span>设置</button>
   </nav>
+  <dialog id="widgetDeleteDialog" aria-labelledby="widgetDeleteTitle"><div class="review-shell"><h2 id="widgetDeleteTitle">确认删除</h2><p id="widgetDeleteText"></p><div class="review-actions"><button id="widgetDeleteCancel" type="button">取消</button><button id="widgetDeleteConfirm" type="button">删除</button></div></div></dialog>
   <dialog id="reviewDialog" aria-labelledby="reviewHeading">
     <div class="review-shell">
       <div class="review-head"><h2 id="reviewHeading">任务已整理好</h2><button id="closeReviewButton" type="button" aria-label="关闭核对窗口">×</button></div>

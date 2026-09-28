@@ -115,6 +115,13 @@ function miniButton(label, action) {
   button.addEventListener("click", action); return button;
 }
 
+function askDelete(message, action) {
+  $("#widgetDeleteText").textContent = message;
+  const confirm = $("#widgetDeleteConfirm");
+  confirm.onclick = () => { $("#widgetDeleteDialog").close(); action(); };
+  $("#widgetDeleteDialog").showModal();
+}
+
 function renderJourneys(data) {
   const host = $("#widgetJourneys"); host.replaceChildren();
   if (!data.journeys.length) host.textContent = "还没有长期旅程。可以在下方新建主线或支线。";
@@ -150,8 +157,8 @@ function renderInbox(data) {
     const info = document.createElement("small"); info.textContent = `${labels[task.questType] || "短期任务"} · ${task.scheduledAt ? shortTime(task.scheduledAt) : "待安排"}`;
     row.append(title, info);
     row.append(miniButton("完成", () => { const next = load(); const item = next.tasks.find((value) => value.id === task.id); if (!item) return; item.status = "done"; item.completedAt = new Date().toISOString(); next.tasks = planTasks(next.tasks); saveData(next); }));
-    if (task.scheduledAt) row.append(miniButton("调整", () => scheduleControls.openEdit(task.id)));
-    row.append(miniButton("删除", () => { if (!window.confirm(`删除“${task.title}”？`)) return; const next = load(); next.tasks = planTasks(next.tasks.filter((item) => item.id !== task.id)); saveData(next); }));
+    row.append(miniButton("调整", () => scheduleControls.openEdit(task.id)));
+    row.append(miniButton("删除", () => askDelete(`删除“${task.title}”？`, () => { const next = load(); next.tasks = planTasks(next.tasks.filter((item) => item.id !== task.id)); saveData(next); })));
     host.append(row);
   }
   if (deferred.length) { const heading = document.createElement("h3"); heading.textContent = "稍后整理"; host.append(heading); }
@@ -159,7 +166,7 @@ function renderInbox(data) {
     const row = document.createElement("div"); row.className = "widget-inbox-row";
     const text = document.createElement("p"); text.textContent = capture.text; row.append(text);
     row.append(miniButton("继续整理", () => { $("#quickInput").value = capture.text; setView("today"); $("#quickInput").focus(); }));
-    row.append(miniButton("删除", () => { if (!window.confirm("删除这条未整理输入？")) return; const next = load(); next.deferredCaptures = next.deferredCaptures.filter((item) => item.id !== capture.id); saveData(next); }));
+    row.append(miniButton("删除", () => askDelete("删除这条未整理输入？", () => { const next = load(); next.deferredCaptures = next.deferredCaptures.filter((item) => item.id !== capture.id); saveData(next); })));
     host.append(row);
   }
 }
@@ -368,6 +375,7 @@ $("#quickForm").addEventListener("submit", organize);
 $("#closeReviewButton").addEventListener("click", () => $("#reviewDialog").close());
 $("#cancelButton").addEventListener("click", () => $("#reviewDialog").close());
 $("#confirmButton").addEventListener("click", confirm);
+$("#widgetDeleteCancel").addEventListener("click", () => $("#widgetDeleteDialog").close());
 document.querySelectorAll("[data-widget-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.widgetView)));
 $("#widgetJourneyForm").addEventListener("submit", (event) => {
   event.preventDefault();
