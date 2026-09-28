@@ -7,6 +7,12 @@
   <title>时序 · 桌面悬浮窗</title>
   <link rel="stylesheet" href="./widget.css">
   <link rel="stylesheet" href="./schedule-controls.css?v=21">
+  <style>
+    .timeline-row{grid-template-columns:64px minmax(0,1fr) auto;gap:5px}
+    .timeline-row .schedule-row-actions{grid-column:auto;justify-self:end;margin-top:0}
+    .timeline-row .schedule-row-actions button{min-height:25px;padding:2px 4px}
+    .timeline-row .schedule-row-actions .schedule-drag{padding:1px 7px 1px 3px}
+  </style>
   <script type="module" src="./widget-runtime.js"></script>
 </head>
 <body>
