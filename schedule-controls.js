@@ -206,5 +206,5 @@ export function createScheduleController({ getTasks, saveTasks }) {
     adjust.addEventListener("click", () => openEdit(task.id));
     actions.append(adjust); row.append(actions);
   }
-  return { decorate };
+  return { decorate, openEdit };
 }

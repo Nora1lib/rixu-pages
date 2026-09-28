@@ -68,7 +68,8 @@ function shortTime(value) {
 
 function render() {
   const now = new Date();
-  const day = now.getHours() >= 6 && now.getHours() < 18;
+  const theme = localStorage.getItem("rixu.theme") || "auto";
+  const day = theme === "day" || (theme !== "night" && now.getHours() >= 6 && now.getHours() < 18);
   document.body.dataset.theme = day ? "day" : "night";
   $("#skyIcon").textContent = day ? "☀️" : "🌙";
   $("#dateLabel").textContent = `${now.getMonth() + 1}月${now.getDate()}日 ${new Intl.DateTimeFormat("zh-CN", { weekday: "long" }).format(now).replace("星期", "周")}`;
@@ -78,8 +79,10 @@ function render() {
     .sort((a, b) => score(b, now.getTime()) - score(a, now.getTime()))[0];
   $("#currentHeading").textContent = current?.title || "从一件小事开始";
   $("#currentMeta").textContent = current ? `${current.kind === "event" ? "固定事项" : labels[current.questType] || "短期任务"} · ${current.priority === "high" ? "高优先级" : current.priority === "medium" ? "中优先级" : "下一步"} · ${Number(current.plannedMinutes) || Number(current.estimateMinutes) || 45} 分钟` : "写下一件想推进的事。";
-  const upcoming = tasks.filter((task) => task.scheduledAt && task.questType !== "daily" && new Date(task.scheduledAt).getTime() <= now.getTime() + 72 * 3600000)
+  const scheduleView = document.body.dataset.view === "schedule";
+  const upcoming = tasks.filter((task) => task.scheduledAt && task.questType !== "daily" && new Date(task.scheduledAt).getTime() <= now.getTime() + (scheduleView ? 7 * 24 : 72) * 3600000)
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  $("#timelineHeading").textContent = scheduleView ? "未来 7 天日程" : "未来 72 小时";
   $("#timelineCount").textContent = `${upcoming.length} 项`;
   const list = $("#timelineList"); list.replaceChildren();
   if (!upcoming.length) {
@@ -95,6 +98,85 @@ function render() {
     scheduleControls.decorate(row, task);
     list.append(row);
   }
+  if (document.body.dataset.view === "journey") renderJourneys(data);
+  if (document.body.dataset.view === "inbox") renderInbox(data);
+  if (document.body.dataset.view === "settings") renderSettings(data);
+}
+
+function saveData(data) {
+  try { localStorage.setItem(KEY, JSON.stringify(data)); }
+  catch { $("#captureMessage").textContent = "本机存储失败，请稍后重试。"; return false; }
+  if (native) window.webkit.messageHandlers.rixu.postMessage({ action: "dataChanged" });
+  render(); return true;
+}
+
+function miniButton(label, action) {
+  const button = document.createElement("button"); button.type = "button"; button.textContent = label;
+  button.addEventListener("click", action); return button;
+}
+
+function renderJourneys(data) {
+  const host = $("#widgetJourneys"); host.replaceChildren();
+  if (!data.journeys.length) host.textContent = "还没有长期旅程。可以在下方新建主线或支线。";
+  for (const journey of data.journeys) {
+    const tasks = data.tasks.filter((task) => task.journeyId === journey.id);
+    const done = tasks.filter((task) => task.status === "done").length;
+    const article = document.createElement("article");
+    const title = document.createElement("strong"); title.textContent = `${journey.kind === "main" ? "⛰ 主线" : "🌱 支线"}｜${journey.title}`;
+    const progress = document.createElement("p"); progress.textContent = `${done} / ${tasks.length} 个路标`;
+    article.append(title, progress);
+    for (const task of tasks) {
+      const row = document.createElement("label"); row.className = "widget-milestone";
+      const check = document.createElement("input"); check.type = "checkbox"; check.checked = task.status === "done";
+      check.addEventListener("change", () => { const next = load(); const item = next.tasks.find((value) => value.id === task.id); if (!item) return; item.status = check.checked ? "done" : "pending"; item.completedAt = check.checked ? new Date().toISOString() : null; next.tasks = planTasks(next.tasks); saveData(next); });
+      const text = document.createElement("span"); text.textContent = task.title; row.append(check, text); article.append(row);
+    }
+    const form = document.createElement("form"); form.className = "widget-inline-form";
+    const input = document.createElement("input"); input.placeholder = "添加路标"; input.maxLength = 180; input.required = true;
+    const submit = document.createElement("button"); submit.textContent = "添加"; form.append(input, submit);
+    form.addEventListener("submit", (event) => { event.preventDefault(); const name = input.value.trim(); if (!name) return; const next = load(); const minutes = 45; next.tasks.push({ id: newId(), title: name, kind: "task", status: "pending", questType: journey.kind, journeyId: journey.id, priority: "auto", estimateMinutes: minutes, remainingMinutes: minutes, plannedMinutes: minutes, createdAt: new Date().toISOString(), deadline: null, fixedAt: null, notBefore: null, scheduledAt: null }); next.tasks = planTasks(next.tasks); saveData(next); });
+    article.append(form); host.append(article);
+  }
+}
+
+function renderInbox(data) {
+  const host = $("#widgetInbox"); host.replaceChildren();
+  const pending = data.tasks.filter((task) => task.status === "pending");
+  const deferred = data.deferredCaptures || [];
+  if (!pending.length && !deferred.length) host.textContent = "收纳箱里暂时没有事项。";
+  for (const task of pending) {
+    const row = document.createElement("div"); row.className = "widget-inbox-row";
+    const title = document.createElement("strong"); title.textContent = task.title;
+    const info = document.createElement("small"); info.textContent = `${labels[task.questType] || "短期任务"} · ${task.scheduledAt ? shortTime(task.scheduledAt) : "待安排"}`;
+    row.append(title, info);
+    row.append(miniButton("完成", () => { const next = load(); const item = next.tasks.find((value) => value.id === task.id); if (!item) return; item.status = "done"; item.completedAt = new Date().toISOString(); next.tasks = planTasks(next.tasks); saveData(next); }));
+    if (task.scheduledAt) row.append(miniButton("调整", () => scheduleControls.openEdit(task.id)));
+    row.append(miniButton("删除", () => { if (!window.confirm(`删除“${task.title}”？`)) return; const next = load(); next.tasks = planTasks(next.tasks.filter((item) => item.id !== task.id)); saveData(next); }));
+    host.append(row);
+  }
+  if (deferred.length) { const heading = document.createElement("h3"); heading.textContent = "稍后整理"; host.append(heading); }
+  for (const capture of [...deferred].reverse()) {
+    const row = document.createElement("div"); row.className = "widget-inbox-row";
+    const text = document.createElement("p"); text.textContent = capture.text; row.append(text);
+    row.append(miniButton("继续整理", () => { $("#quickInput").value = capture.text; setView("today"); $("#quickInput").focus(); }));
+    row.append(miniButton("删除", () => { if (!window.confirm("删除这条未整理输入？")) return; const next = load(); next.deferredCaptures = next.deferredCaptures.filter((item) => item.id !== capture.id); saveData(next); }));
+    host.append(row);
+  }
+}
+
+function renderSettings(data) {
+  $("#widgetTheme").value = localStorage.getItem("rixu.theme") || "auto";
+  $("#widgetReminders").checked = data.quietReminders !== false;
+  $("#widgetReminderMode").value = data.reminderMode === "sound" ? "sound" : "visual";
+}
+
+function setView(view) {
+  document.body.dataset.view = view;
+  for (const button of document.querySelectorAll("[data-widget-view]")) {
+    if (button.dataset.widgetView === view) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  }
+  render();
 }
 
 function inferQuest(text, kind, time, duration) {
@@ -286,6 +368,20 @@ $("#quickForm").addEventListener("submit", organize);
 $("#closeReviewButton").addEventListener("click", () => $("#reviewDialog").close());
 $("#cancelButton").addEventListener("click", () => $("#reviewDialog").close());
 $("#confirmButton").addEventListener("click", confirm);
+document.querySelectorAll("[data-widget-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.widgetView)));
+$("#widgetJourneyForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const name = form.elements.title.value.trim();
+  if (!name) return;
+  const data = load();
+  if (data.journeys.some((item) => item.title === name && item.kind === form.elements.kind.value)) return;
+  data.journeys.push({ id: newId(), title: name, kind: form.elements.kind.value, createdAt: new Date().toISOString() });
+  form.reset(); saveData(data);
+});
+$("#widgetTheme").addEventListener("change", (event) => { localStorage.setItem("rixu.theme", event.target.value); if (native) window.webkit.messageHandlers.rixu.postMessage({ action: "dataChanged" }); render(); });
+$("#widgetReminders").addEventListener("change", (event) => { const data = load(); data.quietReminders = event.target.checked; saveData(data); });
+$("#widgetReminderMode").addEventListener("change", (event) => { const data = load(); data.reminderMode = event.target.value; saveData(data); });
 window.addEventListener("storage", (event) => { if (event.key === KEY) render(); });
 window.addEventListener("rixu:data-changed", render);
 window.addEventListener("focus", render);

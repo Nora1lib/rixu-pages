@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b2545">
   <title>时序 · 桌面悬浮窗</title>
-  <link rel="stylesheet" href="./widget.css">
-  <link rel="stylesheet" href="./schedule-controls.css?v=21">
+  <link rel="stylesheet" href="./widget.css?v=22">
+  <link rel="stylesheet" href="./schedule-controls.css?v=22">
   <style>
     .timeline-row{grid-template-columns:64px minmax(0,1fr) auto;gap:5px}
     .timeline-row .schedule-row-actions{grid-column:auto;justify-self:end;margin-top:0}
     .timeline-row .schedule-row-actions button{min-height:25px;padding:2px 4px}
     .timeline-row .schedule-row-actions .schedule-drag{padding:1px 7px 1px 3px}
   </style>
-  <script type="module" src="./widget-runtime.js"></script>
+  <script type="module" src="./widget-runtime.js?v=22"></script>
 </head>
-<body>
+<body data-view="today">
   <div class="sky" aria-hidden="true"></div>
   <main class="widget-shell">
     <header class="widget-header">
@@ -38,7 +38,28 @@
       <p class="schedule-hint">拖动 ⋮⋮ 调整顺序 · 点“调整”修改时间</p>
       <div id="timelineList" class="timeline-list"></div>
     </section>
+    <section id="journeyView" class="widget-page" aria-labelledby="journeyHeading">
+      <h2 id="journeyHeading">长期旅程</h2><div id="widgetJourneys"></div>
+      <form id="widgetJourneyForm" class="widget-inline-form"><input name="title" maxlength="80" placeholder="新旅程名称" required><select name="kind"><option value="main">主线</option><option value="side">支线</option></select><button>新建</button></form>
+    </section>
+    <section id="inboxView" class="widget-page" aria-labelledby="inboxHeading">
+      <h2 id="inboxHeading">收纳箱</h2><div id="widgetInbox"></div>
+    </section>
+    <section id="settingsView" class="widget-page" aria-labelledby="settingsHeading">
+      <h2 id="settingsHeading">设置</h2>
+      <label>背景时间<select id="widgetTheme"><option value="auto">跟随时间</option><option value="day">白天 · 远足</option><option value="night">夜间 · 扎营</option></select></label>
+      <label>临期提醒<input id="widgetReminders" type="checkbox"></label>
+      <label>提醒方式<select id="widgetReminderMode"><option value="visual">渐入提示</option><option value="sound">渐入提示＋轻音</option></select></label>
+      <p>设置与完整页面共用。数据导入、导出和清空请在完整页面操作。</p>
+    </section>
   </main>
+  <nav class="widget-nav" aria-label="悬浮窗页面">
+    <button type="button" data-widget-view="today" aria-current="page"><span aria-hidden="true">⌂</span>今日</button>
+    <button type="button" data-widget-view="journey"><span aria-hidden="true">⚑</span>旅程</button>
+    <button type="button" data-widget-view="schedule"><span aria-hidden="true">▦</span>日程</button>
+    <button type="button" data-widget-view="inbox"><span aria-hidden="true">▣</span>收纳箱</button>
+    <button type="button" data-widget-view="settings"><span aria-hidden="true">⚙</span>设置</button>
+  </nav>
   <dialog id="reviewDialog" aria-labelledby="reviewHeading">
     <div class="review-shell">
       <div class="review-head"><h2 id="reviewHeading">任务已整理好</h2><button id="closeReviewButton" type="button" aria-label="关闭核对窗口">×</button></div>
