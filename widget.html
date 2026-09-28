@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#0b2545">
   <title>时序 · 桌面悬浮窗</title>
   <link rel="stylesheet" href="./widget.css">
+  <link rel="stylesheet" href="./schedule-controls.css">
   <script type="module" src="./widget.js"></script>
 </head>
 <body>
@@ -28,6 +29,7 @@
     </form>
     <section class="timeline-card" aria-labelledby="timelineHeading">
       <div class="timeline-head"><h2 id="timelineHeading">未来 72 小时</h2><span id="timelineCount">0 项</span></div>
+      <p class="schedule-hint">拖动 ⋮⋮ 调整顺序 · 点“调整”修改时间</p>
       <div id="timelineList" class="timeline-list"></div>
     </section>
   </main>

@@ -1,5 +1,6 @@
-import { parseCapture, summarizeTitle, planTasks, dayKey } from "./planner.js";
+import { parseCapture, summarizeTitle, planTasks, previewScheduleChange, dayKey } from "./planner.js";
 import { recognizeWithDeepSeek } from "./deepseek.js";
+import { createScheduleController } from "./schedule-controls.js";
 
 const KEY = "rixu.web.v1";
 const $ = (selector) => document.querySelector(selector);
@@ -9,6 +10,17 @@ const newId = () => String(crypto.randomUUID ? crypto.randomUUID() : Date.now() 
 let drafts = [];
 let captureText = "";
 let busy = false;
+const scheduleControls = createScheduleController({
+  getTasks: () => load().tasks,
+  saveTasks: (tasks, message) => {
+    const data = load(); data.tasks = tasks;
+    try { localStorage.setItem(KEY, JSON.stringify(data)); }
+    catch { $("#captureMessage").textContent = "本机存储失败，请稍后再试。"; return false; }
+    $("#captureMessage").textContent = message;
+    if (native) window.webkit.messageHandlers.rixu.postMessage({ action: "dataChanged" });
+    render();
+  }
+});
 
 function load() {
   try {
@@ -78,8 +90,10 @@ function render() {
     const time = document.createElement("span"); time.className = "timeline-time"; time.textContent = shortTime(task.scheduledAt);
     const detail = document.createElement("div");
     const title = document.createElement("div"); title.className = "timeline-title"; title.textContent = task.title;
-    const meta = document.createElement("div"); meta.className = "timeline-meta"; meta.textContent = task.kind === "event" ? "固定事项" : labels[task.questType] || "短期任务";
-    detail.append(title, meta); row.append(time, detail); list.append(row);
+    const meta = document.createElement("div"); meta.className = "timeline-meta"; meta.textContent = task.kind === "event" ? "固定事项" : (labels[task.questType] || "短期任务") + (Number.isFinite(task.manualOrder) ? " · 手动排序" : "");
+    detail.append(title, meta); row.append(time, detail);
+    scheduleControls.decorate(row, task);
+    list.append(row);
   }
 }
 
@@ -217,7 +231,9 @@ function proposal() {
     const a = fixed[i], b = fixed[j], at = new Date(a.fixedAt).getTime(), bt = new Date(b.fixedAt).getTime();
     if (at < bt + b.estimateMinutes * 60000 && bt < at + a.estimateMinutes * 60000) return { error: "固定事项时间冲突，请修改后再确认。" };
   }
-  data.tasks = planTasks(data.tasks.concat(additions));
+  const planned = previewScheduleChange(data.tasks, data.tasks.concat(additions));
+  if (planned.error) return { error: planned.error };
+  data.tasks = planned.tasks;
   const changes = before.map((old) => ({ old, next: data.tasks.find((item) => item.id === old.id) }))
     .filter(({ old, next }) => old.scheduledAt !== next?.scheduledAt);
   return { data, additions, changes };

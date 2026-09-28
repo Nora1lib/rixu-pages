@@ -1,0 +1,21 @@
+.schedule-row-actions{display:flex;align-items:center;gap:4px;justify-self:end;white-space:nowrap}
+.schedule-hint{font-size:11px;color:#71839b;line-height:1.4;margin:7px 0 2px}
+.schedule-item{grid-template-columns:70px minmax(0,1fr) auto auto}
+.timeline-row{grid-template-columns:64px minmax(0,1fr) auto}
+.schedule-row-actions button{border:1px solid #a9bbcb;background:#f5f6f2;color:#244d79;border-radius:4px;min-height:26px;padding:2px 6px;font-size:11px;font-weight:750;cursor:pointer}
+.schedule-row-actions .schedule-drag{font-size:15px;letter-spacing:-4px;padding:1px 10px 1px 6px;cursor:grab;touch-action:none;user-select:none}
+.schedule-row-actions .schedule-drag:active{cursor:grabbing}
+.schedule-dragging{opacity:.55}
+.schedule-drop-before{box-shadow:inset 0 3px #e2ae4d}
+.schedule-drop-after{box-shadow:inset 0 -3px #e2ae4d}
+.schedule-adjust-dialog{border:0;background:transparent;padding:3px;width:min(440px,calc(100vw - 22px));max-height:calc(100dvh - 20px);color:#102b4d}
+.schedule-adjust-dialog [hidden]{display:none!important}
+.schedule-adjust-dialog::backdrop{background:#071b35b8}
+.schedule-adjust-shell{background:#fff9eb;border:3px solid #f0c76e;box-shadow:0 0 0 3px #12365d,0 14px 36px #071b3570;border-radius:7px;padding:15px;max-height:calc(100dvh - 26px);overflow:auto;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif}
+.schedule-adjust-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.schedule-adjust-head h2{font-size:18px;margin:0}.schedule-close{border:0;background:transparent;font-size:25px;color:#183960;cursor:pointer}
+.schedule-adjust-lead{font-size:12px;line-height:1.5;color:#53677e;margin:8px 0 12px}
+.schedule-fields{display:grid;grid-template-columns:1fr 1fr;gap:9px}.schedule-fields label{display:grid;gap:4px;font-size:11px;font-weight:750;color:#44607d}.schedule-fields label:first-child,.schedule-fields label:nth-child(2),.schedule-deadline-label{grid-column:1/-1}.schedule-fields input,.schedule-fields select{min-width:0;width:100%;min-height:35px;background:#fff;border:1px solid #b4c2cf;color:#193759;border-radius:4px;padding:5px;font-size:12px}.schedule-fields input:disabled{background:#f0f1ef;color:#929ba5}
+.schedule-impact{margin-top:12px;padding:10px;background:#edf2ee;border:1px solid #cad8ce;border-radius:5px;font-size:11px;line-height:1.5}.schedule-impact strong{font-size:12px}.schedule-impact p{margin:6px 0 0;overflow-wrap:anywhere}.schedule-impact-warning,.schedule-adjust-error{color:#a44436}.schedule-adjust-error{min-height:16px;font-size:11px;margin:7px 0}
+.schedule-adjust-actions{display:flex;gap:8px}.schedule-adjust-actions button{flex:1;min-height:36px;border-radius:4px;font-size:12px;font-weight:800;cursor:pointer}.schedule-preview{background:#fff;border:1px solid #aab9c7;color:#1b4f7d}.schedule-confirm{background:#17436e;border:1px solid #102f57;color:#fff}.schedule-confirm:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:650px){.schedule-item{grid-template-columns:61px minmax(0,1fr)}.schedule-row-actions{grid-column:2;justify-self:start;margin-top:3px}.schedule-row-actions button{min-height:28px}}
+@media(max-width:390px){.timeline-row{grid-template-columns:58px minmax(0,1fr)}.timeline-row .schedule-row-actions{grid-column:2;justify-self:start}}

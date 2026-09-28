@@ -150,13 +150,21 @@ export function planTasks(input, now = new Date()) {
       task.plannedMinutes = task.estimateMinutes;
       const start = new Date(task.fixedAt);
       busy.push([start, new Date(start.getTime() + task.estimateMinutes * 60000)]);
+    } else if (task.kind === 'task' && task.manualAt && new Date(task.manualAt) >= now) {
+      task.scheduledAt = task.manualAt;
+      task.plannedMinutes = Math.min(task.remainingMinutes || task.estimateMinutes, 90);
+      const start = new Date(task.manualAt);
+      busy.push([start, new Date(start.getTime() + task.plannedMinutes * 60000)]);
     } else {
       task.scheduledAt = null;
       task.plannedMinutes = Math.min(task.remainingMinutes || task.estimateMinutes, 90);
     }
   }
-  const flexible = tasks.filter((item) => item.status === 'pending' && item.kind === 'task' && item.questType !== 'daily' && (!item.deadline || new Date(item.deadline) >= now));
+  const flexible = tasks.filter((item) => item.status === 'pending' && item.kind === 'task' && item.questType !== 'daily' && !item.scheduledAt && (!item.deadline || new Date(item.deadline) >= now));
   flexible.sort((a, b) => {
+    const manualA = Number.isFinite(a.manualOrder) ? a.manualOrder : Infinity;
+    const manualB = Number.isFinite(b.manualOrder) ? b.manualOrder : Infinity;
+    if (manualA !== manualB) return manualA - manualB;
     const aa = a.deadline ? new Date(a.deadline).getTime() : Infinity;
     const bb = b.deadline ? new Date(b.deadline).getTime() : Infinity;
     const priority = (task) => task.priority === 'high' ? 0 : task.priority === 'medium' ? 1 : task.priority === 'low' ? 3 : task.questType === 'main' ? 0 : task.questType === 'side' ? 1 : 2;
@@ -189,6 +197,30 @@ export function planTasks(input, now = new Date()) {
     }
   }
   return tasks;
+}
+
+export function previewScheduleChange(before, proposed, now = new Date()) {
+  const occupied = proposed.filter((task) => task.status === 'pending' &&
+    (task.kind === 'event' && task.fixedAt || task.kind === 'task' && task.manualAt && task.questType !== 'daily'))
+    .map((task) => ({ task, start: new Date(task.kind === 'event' ? task.fixedAt : task.manualAt).getTime(),
+      minutes: task.kind === 'event' ? Number(task.estimateMinutes) || 45 : Math.min(Number(task.remainingMinutes) || Number(task.estimateMinutes) || 45, 90) }))
+    .filter((entry) => Number.isFinite(entry.start) && entry.start + entry.minutes * 60000 > now.getTime());
+  for (const entry of occupied) {
+    if (entry.task.kind === 'task' && entry.task.deadline && entry.start + entry.minutes * 60000 > new Date(entry.task.deadline).getTime()) {
+      return { error: `“${entry.task.title}”的安排超过了截止时间。` };
+    }
+  }
+  occupied.sort((a, b) => a.start - b.start);
+  for (let i = 1; i < occupied.length; i++) {
+    if (occupied[i].start < occupied[i - 1].start + occupied[i - 1].minutes * 60000) {
+      return { error: `“${occupied[i - 1].task.title}”与“${occupied[i].task.title}”时间冲突，请调整其中一项。` };
+    }
+  }
+  const tasks = planTasks(proposed, now);
+  const original = new Map(before.map((task) => [task.id, task]));
+  const changes = tasks.filter((task) => original.has(task.id) && original.get(task.id).scheduledAt !== task.scheduledAt)
+    .map((task) => ({ task, from: original.get(task.id).scheduledAt, to: task.scheduledAt }));
+  return { tasks, changes };
 }
 
 export function formatDateTime(value, options = {}) {

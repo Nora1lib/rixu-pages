@@ -9,6 +9,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230b2545'/%3E%3Cpath d='M8 48 26 19l10 15 7-9 13 23Z' fill='%23f6cf75' stroke='%23fff8e7' stroke-width='3'/%3E%3Cpath d='M8 51h48' stroke='%23fff8e7' stroke-width='4'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./schedule-controls.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
@@ -45,6 +46,7 @@
       </section>
       <section class="schedule-card paper-frame" id="schedule" aria-labelledby="scheduleTitle">
         <div class="section-head schedule-head"><div class="section-title"><svg aria-hidden="true"><use href="#i-calendar"/></svg><h2 id="scheduleTitle">今天与未来 72 小时</h2></div><button id="workSummary" class="work-summary" type="button" aria-label="查看今日预计工作时间与忙碌度"></button></div>
+        <p class="schedule-hint">拖动 ⋮⋮ 调整先后顺序，点“调整”修改时间；确认前会预览受影响的日程。</p>
         <div id="scheduleList" class="schedule-list"></div><div id="dailyList" class="daily-list"></div>
         <button id="scheduleMoreButton" class="section-link" type="button">查看完整日程 <span aria-hidden="true">›</span></button>
       </section>

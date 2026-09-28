@@ -1,5 +1,6 @@
-import { parseCapture, summarizeTitle, planTasks, formatDateTime, dayKey, timeLabel } from "./planner.js";
+import { parseCapture, summarizeTitle, planTasks, previewScheduleChange, formatDateTime, dayKey, timeLabel } from "./planner.js";
 import { recognizeWithDeepSeek } from "./deepseek.js";
+import { createScheduleController } from "./schedule-controls.js";
 
 const $ = (selector) => document.querySelector(selector);
 const KEY = "rixu.web.v1";
@@ -79,6 +80,7 @@ function normalize(item) {
     deadline: dateValue(item.deadline), fixedAt: dateValue(item.fixedAt),
     actualStartAt: dateValue(item.actualStartAt), completedAt: dateValue(item.completedAt),
     notBefore: dateValue(item.notBefore), scheduledAt: dateValue(item.scheduledAt),
+    manualAt: dateValue(item.manualAt), manualOrder: Number.isFinite(item.manualOrder) ? item.manualOrder : null,
     questType: ["main", "side", "daily", "normal", "adventure"].includes(item.questType) ? item.questType : inferredQuest(item.title, item.kind),
     journeyId: typeof item.journeyId === "string" ? item.journeyId : null,
     priority: ["auto", "high", "medium", "low"].includes(item.priority) ? item.priority : "auto",
@@ -134,6 +136,10 @@ let focusSeconds = 0;
 let focusEndAt = null;
 let focusTimer = null;
 const reminded = new Set();
+const scheduleControls = createScheduleController({
+  getTasks: () => state.tasks,
+  saveTasks: (tasks, message) => commit({ ...state, tasks }, message, true)
+});
 function save() {
   localStorage.setItem(KEY, JSON.stringify(state));
   if (window.webkit?.messageHandlers?.rixu) window.webkit.messageHandlers.rixu.postMessage({ action: "dataChanged" });
@@ -144,9 +150,9 @@ function toast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => node.hidden = true, 4200);
 }
-function commit(next, message) {
+function commit(next, message, preservePlan = false) {
   undo = clone(state);
-  state = { tasks: planTasks(next.tasks), journeys: next.journeys || [], captures: next.captures || [],
+  state = { tasks: preservePlan ? next.tasks : planTasks(next.tasks), journeys: next.journeys || [], captures: next.captures || [],
     deferredCaptures: next.deferredCaptures || [], quietReminders: next.quietReminders, reminderMode: next.reminderMode || "visual" };
   save(); render(); toast(message);
 }
@@ -231,11 +237,12 @@ function renderSchedule() {
     const row = make("div", "schedule-item " + (task.kind === "event" ? "event" : isAdventure(task) ? "adventure" : "flexible"));
     const info = make("div");
     info.append(make("div", "schedule-title", task.title));
-    const detail = task.kind === "event" ? "已保护的固定时间" : questOf(task) + " · 预计 " + task.plannedMinutes + " 分钟";
+    const detail = task.kind === "event" ? "已保护的固定时间" : questOf(task) + " · 预计 " + task.plannedMinutes + " 分钟" + (Number.isFinite(task.manualOrder) ? " · 手动排序" : "");
     info.append(make("div", "schedule-detail", detail + (task.deadline ? " · 截止 " + formatDateTime(task.deadline) : "")));
     const pill = make("span", "status-pill " + (task.kind === "event" ? "event" : isAdventure(task) ? "adventure" : "flexible"),
       task.kind === "event" ? "▣ 固定事项" : isAdventure(task) ? "✦ 奇遇 · " + timeLabel(task.deadline) + " 前" : "⇄ 可调整");
     row.append(make("span", "schedule-time", timeLabel(task.scheduledAt)), info, pill);
+    scheduleControls.decorate(row, task);
     group.append(row);
   }
   const todayKey = dayKey(new Date());
@@ -557,7 +564,9 @@ function confirmDrafts() {
       }
     }
   }
-  proposed = { ...next, tasks: planTasks(next.tasks.concat(additions)) };
+  const planned = previewScheduleChange(state.tasks, next.tasks.concat(additions));
+  if (planned.error) { toast(planned.error); return; }
+  proposed = { ...next, tasks: planned.tasks };
   const changes = state.tasks.filter((task) => task.status === "pending").map((old) => {
     const updated = proposed.tasks.find((task) => task.id === old.id);
     if (!updated || old.scheduledAt === updated.scheduledAt) return null;
