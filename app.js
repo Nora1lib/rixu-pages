@@ -1,6 +1,7 @@
 import { parseCapture, summarizeTitle, planTasks, previewScheduleChange, formatDateTime, dayKey, timeLabel } from "./planner.js";
-import { recognizeWithDeepSeek } from "./deepseek.js";
-import { createScheduleController } from "./schedule-controls.js";
+import { scheduleEnd, scheduleEndLabel, nextScheduleReminder } from "./schedule-lifecycle.js";
+import { recognizeWithDeepSeek } from "./deepseek.js?v=24";
+import { createScheduleController } from "./schedule-controls.js?v=24";
 
 const $ = (selector) => document.querySelector(selector);
 const KEY = "rixu.web.v1";
@@ -138,7 +139,8 @@ let focusTimer = null;
 const reminded = new Set();
 const scheduleControls = createScheduleController({
   getTasks: () => state.tasks,
-  saveTasks: (tasks, message) => commit({ ...state, tasks }, message, true)
+  saveTasks: (tasks, message) => commit({ ...state, tasks }, message, true),
+  onComplete: completeTask
 });
 function save() {
   localStorage.setItem(KEY, JSON.stringify(state));
@@ -237,11 +239,12 @@ function renderSchedule() {
     const row = make("div", "schedule-item " + (task.kind === "event" ? "event" : isAdventure(task) ? "adventure" : "flexible"));
     const info = make("div");
     info.append(make("div", "schedule-title", task.title));
+    const end = scheduleEnd(task);
     const detail = task.kind === "event" ? "已保护的固定时间" : questOf(task) + " · 预计 " + task.plannedMinutes + " 分钟" + (Number.isFinite(task.manualOrder) ? " · 手动排序" : "");
-    info.append(make("div", "schedule-detail", detail + (task.deadline ? " · 截止 " + formatDateTime(task.deadline) : "")));
+    info.append(make("div", "schedule-detail", detail + (end ? " · " + scheduleEndLabel(task) + " " + formatDateTime(end) : "")));
     const pill = make("span", "status-pill " + (task.kind === "event" ? "event" : isAdventure(task) ? "adventure" : "flexible"),
       task.kind === "event" ? "▣ 固定事项" : isAdventure(task) ? "✦ 奇遇 · " + timeLabel(task.deadline) + " 前" : "⇄ 可调整");
-    row.append(make("span", "schedule-time", timeLabel(task.scheduledAt)), info, pill);
+    row.append(make("span", "schedule-time", "开始 " + timeLabel(task.scheduledAt) + (task.kind === "event" && end ? "\n结束 " + timeLabel(end) : "")), info, pill);
     scheduleControls.decorate(row, task);
     group.append(row);
   }
@@ -422,8 +425,9 @@ function renderDrafts() {
     addField(card, "任务归属", "quest-select", draft.questType, (value) => draft.questType = value);
     addField(card, "旅程名称", "text", draft.journeyName, (value) => draft.journeyName = value);
     addField(card, "优先级", "priority-select", draft.priority, (value) => draft.priority = value);
-    addField(card, "截止或固定时间", "datetime-local", draft.time, (value) => draft.time = value);
+    addField(card, draft.kind === "event" ? "开始时间" : "截止时间", "datetime-local", draft.time, (value) => draft.time = value);
     addField(card, "预计分钟", "number", draft.duration, (value) => draft.duration = value);
+    if (draft.kind === "event") card.append(make("small", "field-note", "结束时间由开始时间＋预计分钟计算，开始前与结束前会分别提醒。"));
     const stateLabel = make("label"); stateLabel.append(make("span", "", "记录状态"));
     const statusSelect = make("select");
     for (const [key, label] of [["future", "待进行"], ["ongoing", "正在进行·补录"], ["completed", "已经结束·补录"]]) {
@@ -587,7 +591,7 @@ function completeTask(taskId) {
     task.remainingMinutes -= task.plannedMinutes;
     task.notBefore = new Date(Date.now() + 15 * 60000).toISOString();
     commit(next, "完成一段，还剩约 " + task.remainingMinutes + " 分钟。");
-  } else { task.status = "done"; commit(next, "已完成。今天已经向前走了一步。"); }
+  } else { task.status = "done"; task.completedAt = new Date().toISOString(); commit(next, "已确认完成。今天已经向前走了一步。"); }
 }
 function toggleDaily(taskId) {
   const next = clone(state), task = next.tasks.find((item) => item.id === taskId);
@@ -767,16 +771,15 @@ function deleteTask(taskId) {
 }
 function checkReminders() {
   if (!state.quietReminders || document.visibilityState !== "visible") return;
-  const now = Date.now();
-  const due = state.tasks.filter((task) => task.status === "pending" && task.scheduledAt && !isExpiredAdventure(task))
-    .map((task) => ({ task, minutes: (new Date(task.scheduledAt).getTime() - now) / 60000 }))
-    .filter(({ task, minutes }) => minutes >= 0 && minutes <= (priorityOf(task) === "高优先级" ? 60 : 15) && !reminded.has(task.id + task.scheduledAt))
-    .sort((a, b) => a.minutes - b.minutes)[0];
+  const due = nextScheduleReminder(state.tasks, reminded);
   if (!due) return;
-  const { task, minutes } = due;
-  reminded.add(task.id + task.scheduledAt);
-  $("#reminderTitle").textContent = (minutes <= 15 ? "快到时间了" : "提前留意") + " · " + task.title;
-  $("#reminderDetail").textContent = questOf(task) + " · " + priorityOf(task) + " · 约 " + Math.ceil(minutes) + " 分钟后开始";
+  const { task, minutes, kind, key } = due;
+  reminded.add(key);
+  $("#reminderTitle").textContent = (kind === "start" ? "日程即将开始" : task.kind === "event" ? "日程即将结束" : task.deadline ? "任务即将截止" : "本段时间即将结束") + " · " + task.title;
+  $("#reminderDetail").textContent = questOf(task) + " · " + priorityOf(task) + " · " + (minutes <= 0 ? "时间已到，请确认完成" : `约 ${Math.ceil(minutes)} 分钟后${kind === "start" ? "开始" : scheduleEndLabel(task)}`);
+  $("#reminderComplete").hidden = kind !== "end";
+  $("#reminderComplete").textContent = task.kind === "task" && task.remainingMinutes > task.plannedMinutes ? "完成这一段" : "确认完成";
+  $("#reminderComplete").onclick = () => { completeTask(task.id); $("#reminderBanner").hidden = true; };
   $("#reminderBanner").hidden = false;
   if (state.reminderMode === "sound") playReminderTone();
 }

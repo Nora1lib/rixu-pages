@@ -1,6 +1,7 @@
 import { parseCapture, summarizeTitle, planTasks, previewScheduleChange, dayKey } from "./planner.js";
-import { recognizeWithDeepSeek } from "./deepseek.js";
-import { createScheduleController } from "./schedule-controls.js";
+import { recognizeWithDeepSeek } from "./deepseek.js?v=24";
+import { createScheduleController } from "./schedule-controls.js?v=24";
+import { scheduleEnd, scheduleEndLabel, nextScheduleReminder } from "./schedule-lifecycle.js";
 
 const KEY = "rixu.web.v1";
 const $ = (selector) => document.querySelector(selector);
@@ -10,8 +11,10 @@ const newId = () => String(crypto.randomUUID ? crypto.randomUUID() : Date.now() 
 let drafts = [];
 let captureText = "";
 let busy = false;
+const reminded = new Set();
 const scheduleControls = createScheduleController({
   getTasks: () => load().tasks,
+  onComplete: completeWidgetTask,
   saveTasks: (tasks, message) => {
     const data = load(); data.tasks = tasks;
     try { localStorage.setItem(KEY, JSON.stringify(data)); }
@@ -39,7 +42,6 @@ function active(task, now) {
   const today = dayKey(now);
   if (task.questType === "daily" && (task.dailyHistory?.includes(today) || task.dailyLastCompleted === today || task.dailyLastSkipped === today)) return false;
   if (task.questType === "adventure" && task.deadline && new Date(task.deadline) < now) return false;
-  if (task.kind === "event" && task.fixedAt && new Date(task.fixedAt).getTime() + (Number(task.estimateMinutes) || 45) * 60000 < now.getTime()) return false;
   return true;
 }
 
@@ -80,7 +82,7 @@ function render() {
   $("#currentHeading").textContent = current?.title || "从一件小事开始";
   $("#currentMeta").textContent = current ? `${current.kind === "event" ? "固定事项" : labels[current.questType] || "短期任务"} · ${current.priority === "high" ? "高优先级" : current.priority === "medium" ? "中优先级" : "下一步"} · ${Number(current.plannedMinutes) || Number(current.estimateMinutes) || 45} 分钟` : "写下一件想推进的事。";
   const scheduleView = document.body.dataset.view === "schedule";
-  const upcoming = tasks.filter((task) => task.scheduledAt && task.questType !== "daily" && new Date(task.scheduledAt).getTime() <= now.getTime() + (scheduleView ? 7 * 24 : 72) * 3600000)
+  const upcoming = tasks.filter((task) => task.scheduledAt && task.questType !== "daily" && new Date(task.scheduledAt).getTime() >= now.getTime() - 24 * 3600000 && new Date(task.scheduledAt).getTime() <= now.getTime() + (scheduleView ? 7 * 24 : 72) * 3600000)
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
   $("#timelineHeading").textContent = scheduleView ? "未来 7 天日程" : "未来 72 小时";
   $("#timelineCount").textContent = `${upcoming.length} 项`;
@@ -90,10 +92,12 @@ function render() {
   }
   for (const task of upcoming) {
     const row = document.createElement("div"); row.className = "timeline-row";
-    const time = document.createElement("span"); time.className = "timeline-time"; time.textContent = shortTime(task.scheduledAt);
+    const end = scheduleEnd(task);
+    const time = document.createElement("span"); time.className = "timeline-time";
+    time.textContent = shortTime(task.scheduledAt) + (task.kind === "event" && end ? `\n至 ${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(end))}` : "");
     const detail = document.createElement("div");
     const title = document.createElement("div"); title.className = "timeline-title"; title.textContent = task.title;
-    const meta = document.createElement("div"); meta.className = "timeline-meta"; meta.textContent = task.kind === "event" ? "固定事项" : (labels[task.questType] || "短期任务") + (Number.isFinite(task.manualOrder) ? " · 手动排序" : "");
+    const meta = document.createElement("div"); meta.className = "timeline-meta"; meta.textContent = (task.kind === "event" ? "固定事项" : labels[task.questType] || "短期任务") + (Number.isFinite(task.manualOrder) ? " · 手动排序" : "") + (task.kind !== "event" && end ? ` · ${scheduleEndLabel(task)} ${shortTime(end)}` : "");
     detail.append(title, meta); row.append(time, detail);
     scheduleControls.decorate(row, task);
     list.append(row);
@@ -108,6 +112,37 @@ function saveData(data) {
   catch { $("#captureMessage").textContent = "本机存储失败，请稍后重试。"; return false; }
   if (native) window.webkit.messageHandlers.rixu.postMessage({ action: "dataChanged" });
   render(); return true;
+}
+
+function completeWidgetTask(taskId) {
+  const data = load(); const task = data.tasks.find((item) => item.id === taskId);
+  if (!task || task.status !== "pending") return;
+  if (task.questType === "daily") {
+    const today = dayKey(new Date());
+    task.dailyHistory = [...new Set([...(task.dailyHistory || []), today])]; task.dailyLastCompleted = today;
+  } else if (task.kind === "task" && Number(task.remainingMinutes) > Number(task.plannedMinutes)) {
+    task.remainingMinutes -= task.plannedMinutes;
+    task.notBefore = new Date(Date.now() + 15 * 60000).toISOString();
+  } else { task.status = "done"; task.completedAt = new Date().toISOString(); }
+  data.tasks = planTasks(data.tasks); saveData(data);
+}
+
+function checkWidgetReminders() {
+  const data = load();
+  if (data.quietReminders === false || document.visibilityState !== "visible") return;
+  const due = nextScheduleReminder(data.tasks, reminded);
+  if (!due) return;
+  reminded.add(due.key);
+  const { task, kind, minutes } = due;
+  $("#widgetReminderTitle").textContent = (kind === "start" ? "即将开始" : task.kind === "event" ? "即将结束" : task.deadline ? "即将截止" : "本段即将结束") + " · " + task.title;
+  $("#widgetReminderText").textContent = minutes <= 0 ? "时间已到，请确认完成" : `约 ${Math.ceil(minutes)} 分钟后${kind === "start" ? "开始" : scheduleEndLabel(task)}`;
+  const complete = $("#widgetReminderComplete"); complete.hidden = kind !== "end";
+  complete.textContent = task.kind === "task" && Number(task.remainingMinutes) > Number(task.plannedMinutes) ? "完成这一段" : "确认完成";
+  complete.onclick = () => { completeWidgetTask(task.id); $("#widgetReminder").hidden = true; };
+  $("#widgetReminder").hidden = false;
+  if (data.reminderMode === "sound") {
+    try { const audio = new (window.AudioContext || window.webkitAudioContext)(); const tone = audio.createOscillator(); const gain = audio.createGain(); tone.type = "sine"; tone.frequency.value = 523; gain.gain.value = .025; tone.connect(gain).connect(audio.destination); tone.start(); tone.stop(audio.currentTime + .25); tone.onended = () => audio.close(); } catch {}
+  }
 }
 
 function miniButton(label, action) {
@@ -267,14 +302,15 @@ function renderDrafts() {
     head.append(title, remove); card.append(head);
     const grid = document.createElement("div"); grid.className = "draft-grid";
     field(grid, "事项", draft.title, "text", (value) => draft.title = value);
-    field(grid, "类型", draft.kind, "select", (value) => draft.kind = value, [["task", "可调整任务"], ["event", "固定事项"]]);
+    field(grid, "类型", draft.kind, "select", (value) => { draft.kind = value; renderDrafts(); }, [["task", "可调整任务"], ["event", "固定事项"]]);
     field(grid, "归属", draft.questType, "select", (value) => draft.questType = value, [["adventure", "奇遇"], ["normal", "短期"], ["main", "主线"], ["side", "支线"], ["daily", "每日"]]);
-    field(grid, "时间", draft.time, "datetime-local", (value) => draft.time = value);
+    field(grid, draft.kind === "event" ? "开始时间" : "截止时间", draft.time, "datetime-local", (value) => draft.time = value);
     field(grid, "预计分钟", draft.duration, "number", (value) => draft.duration = value);
     field(grid, "优先级", draft.priority, "select", (value) => draft.priority = value, [["auto", "自动"], ["high", "高"], ["medium", "中"], ["low", "低"]]);
     field(grid, "状态", draft.recordState, "select", (value) => draft.recordState = value, [["future", "待进行"], ["ongoing", "正在进行"], ["completed", "已经结束"]]);
     field(grid, "旅程", draft.journeyName, "text", (value) => draft.journeyName = value);
     card.append(grid);
+    if (draft.kind === "event") { const note = document.createElement("p"); note.className = "draft-note"; note.textContent = "结束时间＝开始时间＋预计分钟；两个节点分别提醒。"; card.append(note); }
     if (draft.inferred) { const note = document.createElement("p"); note.className = "draft-note"; note.textContent = "部分信息是推测，请重点核对时间和时长。"; card.append(note); }
     host.append(card);
   });
@@ -376,6 +412,7 @@ $("#closeReviewButton").addEventListener("click", () => $("#reviewDialog").close
 $("#cancelButton").addEventListener("click", () => $("#reviewDialog").close());
 $("#confirmButton").addEventListener("click", confirm);
 $("#widgetDeleteCancel").addEventListener("click", () => $("#widgetDeleteDialog").close());
+$("#widgetReminderDismiss").addEventListener("click", () => $("#widgetReminder").hidden = true);
 document.querySelectorAll("[data-widget-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.widgetView)));
 $("#widgetJourneyForm").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -392,5 +429,5 @@ $("#widgetReminders").addEventListener("change", (event) => { const data = load(
 $("#widgetReminderMode").addEventListener("change", (event) => { const data = load(); data.reminderMode = event.target.value; saveData(data); });
 window.addEventListener("storage", (event) => { if (event.key === KEY) render(); });
 window.addEventListener("rixu:data-changed", render);
-window.addEventListener("focus", render);
-render(); setInterval(render, 30000);
+window.addEventListener("focus", () => { render(); checkWidgetReminders(); });
+render(); checkWidgetReminders(); setInterval(() => { render(); checkWidgetReminders(); }, 30000);

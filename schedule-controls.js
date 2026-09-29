@@ -10,7 +10,7 @@ const localInput = (value) => {
 };
 const labelTime = (value) => value ? formatDateTime(value) : "待安排";
 
-export function createScheduleController({ getTasks, saveTasks }) {
+export function createScheduleController({ getTasks, saveTasks, onComplete }) {
   const dialog = document.createElement("dialog");
   dialog.className = "schedule-adjust-dialog";
   dialog.innerHTML = `<div class="schedule-adjust-shell">
@@ -18,7 +18,7 @@ export function createScheduleController({ getTasks, saveTasks }) {
     <p class="schedule-adjust-lead"></p>
     <div class="schedule-fields">
       <label>安排方式<select class="schedule-mode"><option value="auto">自动安排</option><option value="exact">指定时间</option></select></label>
-      <label>时间<input class="schedule-time-input" type="datetime-local"></label>
+      <label>开始时间<input class="schedule-time-input" type="datetime-local"></label>
       <label>预计分钟<input class="schedule-minutes" type="number" min="10" max="480" step="5"></label>
       <label>优先级<select class="schedule-priority"><option value="auto">自动</option><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label>
       <label class="schedule-deadline-label">截止时间<input class="schedule-deadline" type="datetime-local"></label>
@@ -204,7 +204,16 @@ export function createScheduleController({ getTasks, saveTasks }) {
     const adjust = document.createElement("button"); adjust.type = "button"; adjust.className = "schedule-adjust-button";
     adjust.textContent = "调整"; adjust.setAttribute("aria-label", `调整“${task.title}”的日程`);
     adjust.addEventListener("click", () => openEdit(task.id));
-    actions.append(adjust); row.append(actions);
+    actions.append(adjust);
+    if (onComplete) {
+      const complete = document.createElement("button"); complete.type = "button"; complete.className = "schedule-complete";
+      const label = task.kind === "task" && Number(task.remainingMinutes) > Number(task.plannedMinutes) ? "完成这一段" : "确认完成";
+      complete.textContent = "✓"; complete.title = label;
+      complete.setAttribute("aria-label", `${label}“${task.title}”`);
+      complete.addEventListener("click", () => onComplete(task.id));
+      actions.append(complete);
+    }
+    row.append(actions);
   }
   return { decorate, openEdit };
 }

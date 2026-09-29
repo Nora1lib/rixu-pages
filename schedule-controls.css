@@ -3,6 +3,8 @@
 .schedule-item{grid-template-columns:70px minmax(0,1fr) auto auto}
 .timeline-row{grid-template-columns:64px minmax(0,1fr) auto}
 .schedule-row-actions button{border:1px solid #a9bbcb;background:#f5f6f2;color:#244d79;border-radius:4px;min-height:26px;padding:2px 6px;font-size:11px;font-weight:750;cursor:pointer}
+.schedule-row-actions .schedule-complete{background:#e9f4e9;border-color:#8cac91;color:#256042;font-size:15px;min-width:26px}
+.schedule-time{white-space:pre-line}
 .schedule-row-actions .schedule-drag{font-size:15px;letter-spacing:-4px;padding:1px 10px 1px 6px;cursor:grab;touch-action:none;user-select:none}
 .schedule-row-actions .schedule-drag:active{cursor:grabbing}
 .schedule-dragging{opacity:.55}

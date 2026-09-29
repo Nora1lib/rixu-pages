@@ -8,9 +8,9 @@
   <title>时序 · 今日冒险</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230b2545'/%3E%3Cpath d='M8 48 26 19l10 15 7-9 13 23Z' fill='%23f6cf75' stroke='%23fff8e7' stroke-width='3'/%3E%3Cpath d='M8 51h48' stroke='%23fff8e7' stroke-width='4'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./styles.css">
-  <link rel="stylesheet" href="./schedule-controls.css?v=21">
-  <script type="module" src="./app.js?v=19"></script>
+  <link rel="stylesheet" href="./styles.css?v=24">
+  <link rel="stylesheet" href="./schedule-controls.css?v=24">
+  <script type="module" src="./app.js?v=24"></script>
 </head>
 <body>
   <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -123,7 +123,7 @@
     </form>
   </dialog>
   <dialog id="changesDialog" class="settings-dialog" aria-labelledby="changesTitle"><div class="settings-content"><h2 id="changesTitle">这些安排会调整</h2><p class="section-description">请确认变更；加入后仍可撤销。</p><ul id="changesList" class="changes-list"></ul><div class="dialog-actions"><button id="changesCancelButton" class="light-button" type="button">返回修改</button><button id="changesConfirmButton" class="gold-button" type="button">确认新计划</button></div></div></dialog>
-  <div id="reminderBanner" class="reminder-banner" role="alert" hidden><span aria-hidden="true">✦</span><div><strong id="reminderTitle"></strong><p id="reminderDetail"></p></div><button id="reminderDismiss" type="button" aria-label="关闭提醒">×</button></div>
+  <div id="reminderBanner" class="reminder-banner" role="alert" hidden><span aria-hidden="true">✦</span><div><strong id="reminderTitle"></strong><p id="reminderDetail"></p></div><button id="reminderComplete" type="button" hidden>确认完成</button><button id="reminderDismiss" type="button" aria-label="关闭提醒">×</button></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>

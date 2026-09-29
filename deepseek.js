@@ -25,6 +25,7 @@ export async function recognizeWithDeepSeek(text, now = new Date()) {
       const local = parseCapture(sourceText, now)[0];
       let time = typeof item.time === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(item.time) && !Number.isNaN(new Date(item.time).getTime()) ? item.time : "";
       if (/(?:今天|今晚|今夜|今早|今晨|今下午|今上午|今中午|明天|后天)/.test(sourceText) && local?.time) time = local.time;
+      if (/(?:点|[:：])\s*(?:半|\d{0,2})\s*(?:到|至|—|－|-)\s*(?:上午|下午|晚上|早上|凌晨)?\s*\d{1,2}(?:点|[:：])/.test(sourceText) && local?.time) time = local.time;
       const duration = local?.duration && !local.inferred ? local.duration : Math.max(10, Math.min(480, Number(item.duration) || 45));
       const kind = item.kind === "event" ? "event" : "task";
       let questType = ["adventure", "normal", "main", "side", "daily"].includes(item.questType) ? item.questType : "normal";

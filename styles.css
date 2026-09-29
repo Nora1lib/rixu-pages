@@ -162,3 +162,5 @@ body:not([data-view="today"]) .journey-shortcut{display:none}
   .bottom-nav a,.bottom-nav button{flex:1 1 0;width:auto;min-width:0;min-height:56px;padding:3px 1px}
 }
 @media(max-width:380px){.capture-row textarea::placeholder{font-size:.76rem}.bottom-nav a,.bottom-nav button{font-size:.64rem}.bottom-nav svg{width:21px;height:21px}}
+/* Distinguish appointment start from its end and keep completion reachable in reminders. */
+.reminder-banner #reminderComplete{border:1px solid #7ca884;border-radius:5px;background:#e9f4e9;color:#245f41;font-size:.82rem;font-weight:800;padding:6px 9px;white-space:nowrap}
