@@ -164,3 +164,24 @@ body:not([data-view="today"]) .journey-shortcut{display:none}
 @media(max-width:380px){.capture-row textarea::placeholder{font-size:.76rem}.bottom-nav a,.bottom-nav button{font-size:.64rem}.bottom-nav svg{width:21px;height:21px}}
 /* Distinguish appointment start from its end and keep completion reachable in reminders. */
 .reminder-banner #reminderComplete{border:1px solid #7ca884;border-radius:5px;background:#e9f4e9;color:#245f41;font-size:.82rem;font-weight:800;padding:6px 9px;white-space:nowrap}
+/* v0.5: keep the established palette; adapt density and shared controls. */
+.timeline-expand{display:flex;align-items:center;gap:7px;margin:10px 0;font-size:13px;color:var(--ink)}
+.plan-preferences{display:grid;gap:10px;margin-top:15px}.plan-preferences input,.plan-preferences select{max-width:100%;min-width:0}
+.plan-preferences .form-field{display:grid;gap:5px;font-size:13px}.plan-preferences input:not([type=checkbox]){width:100%;padding:8px;border:1px solid #aeb9c5;border-radius:4px;color:#17365b;background:#fff}
+.plan-preferences .schedule-fields label{font-size:12px;display:grid;gap:4px}.plan-preferences .schedule-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+.reminder-banner{flex-wrap:wrap}.reminder-banner button{min-height:36px}
+@media(max-width:480px){.capture-row textarea::placeholder{font-size:13px}.bottom-nav{width:100%;max-width:none;left:0;right:0;transform:none;border-radius:0;grid-template-columns:repeat(5,minmax(0,1fr));padding-bottom:max(8px,env(safe-area-inset-bottom))}.bottom-nav a,.bottom-nav button{min-width:0}.draft-item{grid-template-columns:repeat(2,minmax(0,1fr))}.schedule-row-actions button{min-height:36px}.reminder-banner{left:8px;right:8px;max-width:calc(100vw - 16px)}}
+.draft-advanced{grid-column:1/-1;border-top:1px solid #ddd4bc;padding:8px 0}.draft-advanced summary{font-size:13px;color:#355579;cursor:pointer;min-height:32px}.draft-advanced .draft-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-top:8px}.time-confirmation{grid-column:1/-1!important;display:flex!important;align-items:flex-start;gap:8px;background:#fff0d0;padding:10px;font-size:13px!important;line-height:1.5}.time-confirmation input{width:auto!important;flex:0 0 auto}
+@media(max-width:480px){
+  .sky-header{height:122px;padding-top:30px}
+  .next-card{padding:13px 12px 14px;grid-template-columns:64px minmax(0,1fr)}
+  .hero-icon img{width:62px;height:62px}.hero-icon{min-height:72px}
+  .next-content h1{font-size:1.3rem;margin:8px 0 6px}
+  .next-meta{font-size:.72rem!important;padding:4px 8px;line-height:1.5}
+  .next-explain,.next-content p{font-size:.78rem;line-height:1.45}
+  .soft-badge{font-size:.74rem;padding:4px 10px}
+  .next-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;margin-top:5px}
+  .next-actions button:first-child{min-height:44px;font-size:.95rem;padding:8px}
+  .next-actions button:nth-child(2){font-size:.8rem;padding:8px 4px;min-height:44px}
+  .hero-footnote{display:none}
+}

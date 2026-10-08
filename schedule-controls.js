@@ -1,3 +1,4 @@
+import { isProtected, isDaily, setSession, clearSession } from './schedule-domain.js';
 import { previewScheduleChange, formatDateTime } from "./planner.js";
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -10,7 +11,7 @@ const localInput = (value) => {
 };
 const labelTime = (value) => value ? formatDateTime(value) : "待安排";
 
-export function createScheduleController({ getTasks, saveTasks, onComplete }) {
+export function createScheduleController({ getTasks, saveTasks, onComplete, getData }) {
   const dialog = document.createElement("dialog");
   dialog.className = "schedule-adjust-dialog";
   dialog.innerHTML = `<div class="schedule-adjust-shell">
@@ -18,10 +19,17 @@ export function createScheduleController({ getTasks, saveTasks, onComplete }) {
     <p class="schedule-adjust-lead"></p>
     <div class="schedule-fields">
       <label>安排方式<select class="schedule-mode"><option value="auto">自动安排</option><option value="exact">指定时间</option></select></label>
+      <label>名称<input class="schedule-task-title" maxlength="180"></label>
       <label>开始时间<input class="schedule-time-input" type="datetime-local"></label>
-      <label>预计分钟<input class="schedule-minutes" type="number" min="10" max="480" step="5"></label>
+      <label>本段结束<input class="schedule-end-input" type="datetime-local"></label>
+      <label>预计总工作量（分钟）<input class="schedule-minutes" type="number" min="10" max="480" step="5"></label>
       <label>优先级<select class="schedule-priority"><option value="auto">自动</option><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label>
       <label class="schedule-deadline-label">截止时间<input class="schedule-deadline" type="datetime-local"></label>
+      <label>所属旅程<select class="schedule-journey"></select></label>
+      <label>重复<select class="schedule-recurrence"><option value="once">一次性</option><option value="daily">每日</option></select></label>
+      <label>紧急程度<select class="schedule-urgency"><option value="normal">普通</option><option value="urgent">今天内紧急</option></select></label>
+      <label>锁定安排<input class="schedule-locked" type="checkbox"></label>
+      <label class="schedule-protected-label">明确修改固定／锁定时间<input class="schedule-allow-protected" type="checkbox"></label>
     </div>
     <div class="schedule-impact"><strong>自动调整预览</strong><div class="schedule-impact-list"></div></div>
     <p class="schedule-adjust-error" role="alert"></p>
@@ -63,7 +71,7 @@ export function createScheduleController({ getTasks, saveTasks, onComplete }) {
     }
     for (const change of result.changes) {
       const line = document.createElement("p");
-      line.textContent = `${change.task.title}：${labelTime(change.from)} → ${labelTime(change.to)}`;
+      line.textContent = `${change.task.title}：${labelTime(change.from)}–${labelTime(change.fromEnd)} → ${labelTime(change.to)}–${labelTime(change.toEnd)}`;
       host.append(line);
     }
     const unplanned = result.changes.filter((change) => change.from && !change.to).length;
@@ -81,11 +89,19 @@ export function createScheduleController({ getTasks, saveTasks, onComplete }) {
     mode = "edit"; selectedId = taskId;
     $(".schedule-adjust-head h2").textContent = "调整日程";
     $(".schedule-adjust-lead").textContent = task.title + (task.kind === "event" ? " · 固定事项，修改后会重新安排可移动任务。" : " · 选择时间或优先级，预览受影响的安排。 ");
-    const exact = task.kind === "event" || Boolean(task.manualAt);
+    const exact = task.kind === "event" || Boolean(task.manualAt) || isProtected(task);
     $(".schedule-mode").value = exact ? "exact" : "auto";
-    $(".schedule-mode").disabled = task.kind === "event";
+    $(".schedule-mode").disabled = task.kind === "event" || Boolean(task.actualStartAt);
     $(".schedule-time-input").value = localInput(task.manualAt || task.fixedAt || task.scheduledAt);
     $(".schedule-time-input").disabled = !exact;
+    $('.schedule-task-title').value=task.title;
+    $('.schedule-end-input').value=localInput(task.scheduledEndAt);
+    $('.schedule-locked').checked=Boolean(task.locked);
+    $('.schedule-recurrence').value=isDaily(task)?'daily':'once';
+    $('.schedule-urgency').value=task.urgency||'normal';
+    $('.schedule-protected-label').hidden=!isProtected(task);$('.schedule-allow-protected').checked=false;
+    const choices=$('.schedule-journey');choices.replaceChildren();
+    for(const j of [{id:'',title:'无长期归属'},...(getData?.().journeys||[])]){const option=document.createElement('option');option.value=j.id;option.textContent=j.title;choices.append(option);}choices.value=task.journeyId||'';
     $(".schedule-minutes").value = task.estimateMinutes || 45;
     $(".schedule-priority").value = task.priority || "auto";
     $(".schedule-deadline-label").hidden = task.kind === "event";
@@ -96,7 +112,7 @@ export function createScheduleController({ getTasks, saveTasks, onComplete }) {
   }
 
   function reorder(baseTasks, draggedId, droppedId, after) {
-    const items = baseTasks.filter((item) => item.status === "pending" && item.kind === "task" && item.questType !== "daily")
+    const items = baseTasks.filter((item) => item.status === "pending" && item.kind === "task" && !isDaily(item) && !isProtected(item))
       .sort((a, b) => (a.scheduledAt || "9999").localeCompare(b.scheduledAt || "9999") || (a.createdAt || "").localeCompare(b.createdAt || ""));
     const from = items.findIndex((item) => item.id === draggedId);
     if (from < 0) return false;
@@ -110,6 +126,7 @@ export function createScheduleController({ getTasks, saveTasks, onComplete }) {
     }
     items.forEach((item, index) => { item.manualOrder = index; });
     dragged.manualAt = null;
+    clearSession(dragged);
     return true;
   }
 
@@ -118,14 +135,14 @@ export function createScheduleController({ getTasks, saveTasks, onComplete }) {
     mode = "reorder"; sourceId = draggedId; targetId = droppedId; placeAfter = after;
     const dragged = base.find((item) => item.id === draggedId);
     const dropped = base.find((item) => item.id === droppedId);
-    if (!dragged || !dropped || dragged.id === dropped.id) return;
+    if (!dragged || !dropped || dragged.id === dropped.id || isProtected(dragged)) return;
     $(".schedule-adjust-head h2").textContent = "调整优先顺序";
     $(".schedule-adjust-lead").textContent = `把“${dragged.title}”的排程优先级移到“${dropped.title}”${after ? "之后" : "之前"}，自动重排可移动任务。固定事项保持原时间。${dragged.manualAt ? "这件事原先指定的时间将改为自动安排。" : ""}`;
     $(".schedule-fields").hidden = true;
     $(".schedule-preview").hidden = true;
     const next = clone(base);
     if (!reorder(next, draggedId, droppedId, after)) return;
-    showChanges(previewScheduleChange(base, next));
+    showChanges(previewScheduleChange(base, next,new Date(),{preferences:getData?.().preferences}));
     dialog.showModal();
   }
 
@@ -139,19 +156,27 @@ export function createScheduleController({ getTasks, saveTasks, onComplete }) {
     }
     const exact = task.kind === "event" || $(".schedule-mode").value === "exact";
     const inputTime = $(".schedule-time-input").value;
-    if (exact && (!inputTime || Number.isNaN(new Date(inputTime).getTime()) || new Date(inputTime).getTime() < Date.now() - 60000)) {
+    if (exact && (!inputTime || Number.isNaN(new Date(inputTime).getTime()) || new Date(inputTime).getTime() < Date.now() - 60000 && inputTime !== localInput(base.find(t=>t.id===selectedId)?.scheduledAt))) {
       showChanges({ error: "请填写有效的未来时间。" }); return;
     }
-    task.estimateMinutes = minutes;
-    task.remainingMinutes = Math.max(10, (Number(task.remainingMinutes) || Number(base.find((item) => item.id === selectedId).estimateMinutes) || minutes) + minutes - (Number(base.find((item) => item.id === selectedId).estimateMinutes) || minutes));
-    task.priority = $(".schedule-priority").value;
-    if (task.kind === "event") task.fixedAt = new Date(inputTime).toISOString();
-    else {
-      task.manualAt = exact ? new Date(inputTime).toISOString() : null;
-      const deadline = $(".schedule-deadline").value;
-      task.deadline = deadline ? new Date(deadline).toISOString() : null;
-    }
-    showChanges(previewScheduleChange(base, next));
+    const title=$('.schedule-task-title').value.trim();if(!title){showChanges({error:'请输入事项名称。'});return;}
+    const old=base.find(t=>t.id===selectedId);
+    task.title=title;task.estimateMinutes=minutes;task.remainingMinutes=task.status==='done'?0:Math.max(0,task.remainingMinutes+minutes-old.estimateMinutes);
+    task.priority=$('.schedule-priority').value;
+    task.journeyId=$('.schedule-journey').value||null;task.journeyKind=getData?.().journeys.find(j=>j.id===task.journeyId)?.kind||null;
+    task.recurrence=$('.schedule-recurrence').value;task.urgency=$('.schedule-urgency').value;task.questType=task.recurrence==='daily'?'daily':task.journeyKind|| (task.urgency==='urgent'?'adventure':'normal');
+    const endInput=$('.schedule-end-input').value;
+    if(exact){
+      const start=new Date(inputTime),end=endInput?new Date(endInput):new Date(start.getTime()+Math.min(task.remainingMinutes||minutes,task.kind==='event'?480:90)*60000);
+      if(!Number.isFinite(end.getTime())||end<=start||end-start>480*60000){showChanges({error:'本段结束须晚于开始，且不超过8小时。'});return;}
+      task.manualAt=task.kind==='task'?start.toISOString():null;if(task.kind==='event')task.fixedAt=start.toISOString();setSession(task,start,(end-start)/60000);
+    }else{task.manualAt=null;clearSession(task);}
+    const deadline=$('.schedule-deadline').value;task.deadline=deadline?new Date(deadline).toISOString():null;
+    task.locked=$('.schedule-locked').checked;
+    if(old.actualStartAt&&(old.scheduledAt!==task.scheduledAt||old.scheduledEndAt!==task.scheduledEndAt)){showChanges({error:'正在执行的安排请先确认本段进度，再安排下一段。'});return;}
+    const allow=$('.schedule-allow-protected').checked;
+    if(isProtected(old)&&(old.scheduledAt!==task.scheduledAt||old.scheduledEndAt!==task.scheduledEndAt||old.estimateMinutes!==task.estimateMinutes||old.locked!==task.locked)&&!allow){showChanges({error:'请明确确认修改固定／锁定安排。'});return;}
+    showChanges(previewScheduleChange(base,next,new Date(),{preferences:getData?.().preferences,allowProtectedIds:allow?[task.id]:[]}));
   }
 
   $(".schedule-mode").addEventListener("change", () => { $(".schedule-time-input").disabled = $(".schedule-mode").value !== "exact"; proposal = null; $(".schedule-confirm").disabled = true; });
@@ -168,7 +193,7 @@ export function createScheduleController({ getTasks, saveTasks, onComplete }) {
   function decorate(row, task) {
     row.dataset.scheduleId = task.id;
     const actions = document.createElement("div"); actions.className = "schedule-row-actions";
-    if (task.kind === "task") {
+    if (task.kind === "task" && !isProtected(task) && !isDaily(task)) {
       const drag = document.createElement("button"); drag.type = "button"; drag.className = "schedule-drag";
       drag.textContent = "⋮⋮"; drag.title = "拖动调整优先顺序";
       drag.setAttribute("aria-label", `拖动调整“${task.title}”的优先顺序，或用上下方向键`);
@@ -207,7 +232,7 @@ export function createScheduleController({ getTasks, saveTasks, onComplete }) {
     actions.append(adjust);
     if (onComplete) {
       const complete = document.createElement("button"); complete.type = "button"; complete.className = "schedule-complete";
-      const label = task.kind === "task" && Number(task.remainingMinutes) > Number(task.plannedMinutes) ? "完成这一段" : "确认完成";
+      const label = "确认进度";
       complete.textContent = "✓"; complete.title = label;
       complete.setAttribute("aria-label", `${label}“${task.title}”`);
       complete.addEventListener("click", () => onComplete(task.id));

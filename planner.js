@@ -1,3 +1,4 @@
+import { normalizeTask, setSession, clearSession, isProtected, isDaily, DEFAULT_PREFS } from './schedule-domain.js';
 const DAY = 24 * 60 * 60 * 1000;
 const weekdays = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 日: 7, 天: 7 };
 const chineseNumbers = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
@@ -83,6 +84,7 @@ function durationFromWords(text) {
 
 export function summarizeTitle(fragment) {
   let title = String(fragment || '').trim();
+  title = title.replace(/(?:凌晨|早上|上午|中午|下午|傍晚|晚上)?\s*(?:\d{1,2}|[一二两三四五六七八九十]+)(?:点|[:：])(?:半|\d{1,2})?\s*(?:到|至|—|－|-)\s*(?:凌晨|早上|上午|中午|下午|傍晚|晚上)?\s*(?:\d{1,2}|[一二两三四五六七八九十]+)(?:点|[:：])(?:半|\d{1,2})?/g, '');
   title = title.replace(/^(?:嗯|呃|那个|就是|然后|另外|还有|对了|顺便|我想|我还|我|记得|提醒我|帮我|麻烦|请)+[，,\s]*/g, '');
   title = title.replace(/(?:预计|大概|大约|约|需要|持续|用时|花费?)?\s*(?:\d+(?:\.\d+)?|[一二两三四五六七八九十半两]+)个?小时(?:\s*(?:\d+|[一二两三四五六七八九十]+)分(?:钟)?)?/g, '');
   title = title.replace(/(?:预计|大概|大约|约|需要|持续|用时|花费?)\s*(?:\d+|[一二两三四五六七八九十]+)分(?:钟)?/g, '');
@@ -92,135 +94,120 @@ export function summarizeTitle(fragment) {
   title = title.replace(/^(?:凌晨|早上|上午|中午|下午|傍晚|晚上|之前|以前|前|左右)+/g, '');
   title = title.replace(/^(?:要|得|需要|必须|打算|准备去|去|把|将|给我|帮我|记得|提醒我)+/g, '');
   title = title.replace(/(?:还有个事|还有一件事|有个事|有一件事|这件事|这件事情)$/g, '');
+  title = title.replace(/[，,]\s*(?:前)?(?:交稿|交付|提交|完成)(?:即可|就行|就好)?$/, '');
   title = title.replace(/^[，,。；;、\s]+|[，,。；;、\s]+$/g, '').replace(/\s{2,}/g, ' ');
   return !title || /^(?:个事|件事|有事|事|安排)$/.test(title) ? '补充具体事项' : title;
 }
 
+export function temporalFields(text, now = new Date()) {
+  const range = text.match(/((?:凌晨|早上|上午|中午|下午|傍晚|晚上)?\s*(?:\d{1,2}|[一二两三四五六七八九十]+)(?:点|[:：])(?:半|\d{1,2})?)\s*(?:到|至|—|－|-)\s*((?:凌晨|早上|上午|中午|下午|傍晚|晚上)?\s*(?:\d{1,2}|[一二两三四五六七八九十]+)(?:点|[:：])(?:半|\d{1,2})?)/);
+  const deadlineClause = text.match(/((?:(?:今天|今晚|明天|后天|本周|下周|周|星期)[一二三四五六日天]?|\d{1,2}月\d{1,2}[日号]?)[^，,。；;]*?(?:前|截止|交付|交稿))/)?.[0] || (/(?:点|[:：])[^，,。；;]*?(?:前|截止)/.test(text) ? text : '');
+  const input = range ? text.slice(0,text.indexOf(range[0])+range[0].length) : deadlineClause ? text.replace(deadlineClause,'') : text;
+  const toTime = (part, fallbackDate = null) => {
+    const date = dateFromWords(part, now) || fallbackDate || at(now,0), clock = timeFromWords(part);
+    if (!clock && !dateFromWords(part,now)) return '';
+    const d=at(date,clock?.hour ?? 18,clock?.minute ?? 0);
+    return `${localDate(d)}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  };
+  let startTime='',endTime='',deadlineTime='',needsTimeConfirmation=false;
+  if (range) {
+    const date=dateFromWords(input,now)||at(now,0);
+    startTime=toTime(range[1],date);
+    const period=range[1].match(/凌晨|早上|上午|中午|下午|傍晚|晚上/)?.[0] || '';
+    const endText=/凌晨|早上|上午|中午|下午|傍晚|晚上/.test(range[2])?range[2]:period+range[2];
+    endTime=toTime(endText,date);
+    if(new Date(endTime)<=new Date(startTime)){const d=new Date(endTime);d.setDate(d.getDate()+1);endTime=`${localDate(d)}T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
+  } else if (timeFromWords(input)) startTime=toTime(input);
+  if(deadlineClause){deadlineTime=toTime(deadlineClause);needsTimeConfirmation=!timeFromWords(deadlineClause);}
+  if(!startTime&&!deadlineTime&&dateFromWords(text,now)){needsTimeConfirmation=true;}
+  return {startTime,endTime,deadlineTime,needsTimeConfirmation,rangeText:range?.[0]||''};
+}
+
 export function parseCapture(raw, now = new Date()) {
-  const prepared = raw.replace(/[，,](?=\s*(?:预计|大概|约)\s*(?:\d|[一二两三四五六七八九十半]))/g, ' ');
-  const fragments = prepared.split(/[\n。；;]+/).flatMap((part) =>
-    part.split(/[，,](?=\s*(?:另外|然后|还要|还得|还需要|明天|后天|今天|今晚|下周|本周|周[一二三四五六日天]))/)
-  ).map((item) => item.trim()).filter(Boolean).slice(0, 12);
-  const actionable = fragments.filter((item) => !/^(我)?(好焦虑|有点焦虑|很乱|不知道怎么办|压力好大|好烦|害怕|有点不知道先做哪个)$/.test(item));
-  if (!actionable.length) return [{ title: '写下一件最担心的具体事项', kind: 'task', time: '', duration: 10, inferred: true }];
-  return actionable.map((fragment) => {
-    const date = dateFromWords(fragment, now);
-    const time = timeFromWords(fragment);
-    const fixed = fixedWords.test(fragment) && Boolean(date || time) && !/回复|邮件|准备|整理|记录|复盘|修改|写|做|完成/.test(fragment);
-    let when = date;
-    if (!when && time) {
-      when = at(now, 0);
-      if (at(when, time.hour, time.minute) < now && !/刚才|之前|已经|过去|补录|正在|开始了|结束了/.test(fragment)) when.setDate(when.getDate() + 1);
-    }
-    if (when) {
-      const defaultHour = fixed ? 9 : 18;
-      when = at(when, time?.hour ?? defaultHour, time?.minute ?? 0);
-    }
-    const duration = durationFromWords(fragment);
-    const title = summarizeTitle(fragment);
-    return {
-      title,
-      sourceText: fragment,
-      kind: fixed ? 'event' : 'task',
-      time: when ? `${localDate(when)}T${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')}` : '',
-      duration: duration || (fixed ? 60 : 45),
-      inferred: !date || !duration || (!time && fixed) || title === '补充具体事项',
-    };
+  const prepared = String(raw).replace(/[，,](?=\s*(?:预计|大概|约)\s*(?:\d|[一二两三四五六七八九十半]))/g, ' ');
+  const fragments = prepared.split(/[\n。；;]+/).flatMap((part) => part.split(/[，,](?=\s*(?:另外|然后|还要|还得|还需要))/)).map((x)=>x.trim()).filter(Boolean).slice(0,12);
+  return fragments.map((fragment)=>{
+    if(/不对|改到|改成/.test(fragment)) fragment=fragment.replace(/^.*?(?:不对[，,]?\s*|改到|改成)/,'');
+    const fields=temporalFields(fragment,now);
+    const fixed=fixedWords.test(fragment)&&Boolean(fields.startTime)&&! /回复|邮件|准备|整理|记录|复盘|修改|写|做|完成/.test(fragment);
+    const rangeMinutes=fields.startTime&&fields.endTime?(new Date(fields.endTime)-new Date(fields.startTime))/60000:null;
+    const explicitDuration=durationFromWords(fragment.replace(fields.rangeText,''));
+    return {title:summarizeTitle(fragment),sourceText:fragment,kind:fixed?'event':'task',...fields,
+      time:fixed?fields.startTime:fields.deadlineTime||fields.startTime,
+      duration:explicitDuration||rangeMinutes||(fixed?60:45),
+      inferred:!rangeMinutes&&!explicitDuration||fields.needsTimeConfirmation,
+      recordState:/已经|已完成|结束了|刚才.*(?:完成|结束)/.test(fragment)?'completed':/正在|进行中|开始了/.test(fragment)?'ongoing':'future'};
   });
 }
-
-function windowsFor(day) {
-  return [[9, 0, 12, 0], [13, 0, 18, 0], [19, 0, 21, 0]].map(([h1, m1, h2, m2]) => [at(day, h1, m1), at(day, h2, m2)]);
-}
-
-function overlap(start, end, busyStart, busyEnd) {
-  return start < busyEnd && end > busyStart;
-}
-
-export function planTasks(input, now = new Date()) {
-  const tasks = input.map((item) => ({ ...item }));
-  const horizon = new Date(now.getTime() + 72 * 60 * 60 * 1000);
-  const busy = [];
-  for (const task of tasks) {
-    if (task.status !== 'pending' || task.questType === 'daily' || (task.kind === 'task' && task.deadline && new Date(task.deadline) < now)) {
-      task.scheduledAt = null; continue;
-    }
-    if (task.kind === 'event' && task.fixedAt) {
-      task.scheduledAt = task.fixedAt;
-      task.plannedMinutes = task.estimateMinutes;
-      const start = new Date(task.fixedAt);
-      busy.push([start, new Date(start.getTime() + task.estimateMinutes * 60000)]);
-    } else if (task.kind === 'task' && task.manualAt && new Date(task.manualAt) >= now) {
-      task.scheduledAt = task.manualAt;
-      task.plannedMinutes = Math.min(task.remainingMinutes || task.estimateMinutes, 90);
-      const start = new Date(task.manualAt);
-      busy.push([start, new Date(start.getTime() + task.plannedMinutes * 60000)]);
-    } else {
-      task.scheduledAt = null;
-      task.plannedMinutes = Math.min(task.remainingMinutes || task.estimateMinutes, 90);
+function windowsFor(day, prefs) { return prefs.windows.map(([from,to])=>[at(day,Math.floor(from),(from%1)*60),at(day,Math.floor(to),(to%1)*60)]); }
+const overlap=(a,b,c,d)=>a<d&&c<b;
+export function planTasks(input, now = new Date(), options = {}) {
+  const prefs={...DEFAULT_PREFS,...options.preferences};
+  const tasks=input.map((t)=>normalizeTask(t,now)).filter(Boolean),busy=[],dailyMinutes=new Map(),queue=[];
+  const horizon=now.getTime()+72*3600000,replan=new Set(options.replanIds||[]);
+  const addBusy=(t,start,end)=>{
+    busy.push([start,end + (t.kind==='event'?0:prefs.bufferMinutes*60000)]);
+    const day=new Date(start);day.setHours(0,0,0,0);
+    while(day.getTime()<end){const next=new Date(day);next.setDate(next.getDate()+1);const minutes=Math.max(0,(Math.min(end,next.getTime())-Math.max(start,day.getTime()))/60000);const key=localDate(day);dailyMinutes.set(key,(dailyMinutes.get(key)||0)+minutes);day.setDate(day.getDate()+1);}
+  };
+  // Hard constraints are inserted before flexible confirmed slots.
+  for(const task of tasks){
+    if(task.status!=='pending'||isDaily(task))continue;
+    const minutes=task.plannedMinutes||task.estimateMinutes;
+    const anchor=task.kind==='event'?task.fixedAt:task.manualAt||task.scheduledAt;
+    if(isProtected(task)||task.manualAt){
+      if(anchor){setSession(task,anchor,minutes);addBusy(task,new Date(anchor).getTime(),new Date(task.scheduledEndAt).getTime());}
+      else task.unplannedReason='请确认正在执行事项的时间';
     }
   }
-  const flexible = tasks.filter((item) => item.status === 'pending' && item.kind === 'task' && item.questType !== 'daily' && !item.scheduledAt && (!item.deadline || new Date(item.deadline) >= now));
-  flexible.sort((a, b) => {
-    const manualA = Number.isFinite(a.manualOrder) ? a.manualOrder : Infinity;
-    const manualB = Number.isFinite(b.manualOrder) ? b.manualOrder : Infinity;
-    if (manualA !== manualB) return manualA - manualB;
-    const aa = a.deadline ? new Date(a.deadline).getTime() : Infinity;
-    const bb = b.deadline ? new Date(b.deadline).getTime() : Infinity;
-    const priority = (task) => task.priority === 'high' ? 0 : task.priority === 'medium' ? 1 : task.priority === 'low' ? 3 : task.questType === 'main' ? 0 : task.questType === 'side' ? 1 : 2;
-    return aa - bb || priority(a) - priority(b) || a.createdAt.localeCompare(b.createdAt);
+  for(const task of tasks){
+    if(task.status!=='pending'||isDaily(task)||isProtected(task)||task.manualAt)continue;
+    if(task.deadline&&new Date(task.deadline)<now){task.unplannedReason='已超过截止，请补录完成、调整截止或取消';continue;}
+    if(task.scheduledAt&&!replan.has(task.id)){
+      const a=new Date(task.scheduledAt).getTime(),b=new Date(task.scheduledEndAt||a+task.plannedMinutes*60000).getTime();
+      if(b<=now.getTime()||!busy.some(([c,d])=>overlap(a,b,c,d))){addBusy(task,a,b);continue;}
+    }
+    clearSession(task);task.plannedMinutes=Math.min(task.remainingMinutes||task.estimateMinutes,90);queue.push(task);
+  }
+  queue.sort((a,b)=>{
+    const x=Number.isFinite(a.manualOrder)?a.manualOrder:Infinity,y=Number.isFinite(b.manualOrder)?b.manualOrder:Infinity;
+    if(x!==y)return x<y?-1:1;
+    const ad=a.deadline?new Date(a.deadline).getTime():Infinity,bd=b.deadline?new Date(b.deadline).getTime():Infinity;
+    if(ad!==bd)return ad<bd?-1:1;
+    return ({high:0,medium:1,auto:2,low:3})[a.priority]-({high:0,medium:1,auto:2,low:3})[b.priority]||a.createdAt.localeCompare(b.createdAt);
   });
-  const dailyMinutes = new Map();
-  for (const task of flexible) {
-    const minutes = task.plannedMinutes;
-    for (let offset = 0; offset < 4 && !task.scheduledAt; offset++) {
-      const day = at(now, 0); day.setDate(day.getDate() + offset);
-      const key = localDate(day);
-      if ((dailyMinutes.get(key) || 0) + minutes > 240) continue;
-      for (const [windowStart, windowEnd] of windowsFor(day)) {
-        let cursor = new Date(Math.max(windowStart.getTime(), now.getTime(), task.notBefore ? new Date(task.notBefore).getTime() : 0));
-        cursor = new Date(Math.ceil(cursor.getTime() / 900000) * 900000);
-        while (cursor.getTime() + minutes * 60000 <= windowEnd.getTime()) {
-          const end = new Date(cursor.getTime() + minutes * 60000);
-          if (end > horizon || (task.deadline && end > new Date(task.deadline))) break;
-          const conflict = busy.find(([from, to]) => overlap(cursor, end, from, to));
-          if (!conflict) {
-            task.scheduledAt = cursor.toISOString();
-            dailyMinutes.set(key, (dailyMinutes.get(key) || 0) + minutes);
-            busy.push([cursor, new Date(end.getTime() + 15 * 60000)]);
-            break;
-          }
-          cursor = new Date(Math.ceil(conflict[1].getTime() / 900000) * 900000);
+  for(const task of queue){
+    const minutes=task.plannedMinutes;
+    for(let offset=0;offset<4&&!task.scheduledAt;offset++){
+      const day=at(now,0);day.setDate(day.getDate()+offset);
+      if((dailyMinutes.get(localDate(day))||0)+minutes>prefs.maxMinutes)continue;
+      for(const [from,to]of windowsFor(day,prefs)){
+        let cursor=Math.ceil(Math.max(from.getTime(),now.getTime(),task.notBefore?new Date(task.notBefore).getTime():0)/900000)*900000;
+        while(cursor+minutes*60000<=to.getTime()){
+          const end=cursor+minutes*60000;if(end>horizon||task.deadline&&end>new Date(task.deadline).getTime())break;
+          const conflicts=busy.filter(([a,b])=>overlap(cursor,end,a,b));
+          if(!conflicts.length){setSession(task,new Date(cursor),minutes);addBusy(task,cursor,end);task.unplannedReason=null;break;}
+          cursor=Math.ceil(Math.max(...conflicts.map((x)=>x[1]))/900000)*900000;
         }
-        if (task.scheduledAt) break;
+        if(task.scheduledAt)break;
       }
     }
+    if(!task.scheduledAt)task.unplannedReason='未来72小时内容量不足或无法满足截止，请调整时间或工作量';
   }
   return tasks;
 }
-
-export function previewScheduleChange(before, proposed, now = new Date()) {
-  const occupied = proposed.filter((task) => task.status === 'pending' &&
-    (task.kind === 'event' && task.fixedAt || task.kind === 'task' && task.manualAt && task.questType !== 'daily'))
-    .map((task) => ({ task, start: new Date(task.kind === 'event' ? task.fixedAt : task.manualAt).getTime(),
-      minutes: task.kind === 'event' ? Number(task.estimateMinutes) || 45 : Math.min(Number(task.remainingMinutes) || Number(task.estimateMinutes) || 45, 90) }))
-    .filter((entry) => Number.isFinite(entry.start) && entry.start + entry.minutes * 60000 > now.getTime());
-  for (const entry of occupied) {
-    if (entry.task.kind === 'task' && entry.task.deadline && entry.start + entry.minutes * 60000 > new Date(entry.task.deadline).getTime()) {
-      return { error: `“${entry.task.title}”的安排超过了截止时间。` };
-    }
+export function previewScheduleChange(before, proposed, now = new Date(), options={}) {
+  const original=new Map(before.map((t)=>[t.id,t])),changed=[];
+  for(const t of proposed){const old=original.get(t.id);if(!old)continue;
+    if(isProtected(old)&&(t.manualAt!==old.manualAt||t.scheduledAt!==old.scheduledAt||t.scheduledEndAt!==old.scheduledEndAt||t.estimateMinutes!==old.estimateMinutes||t.fixedAt!==old.fixedAt)&&!options.allowProtectedIds?.includes(t.id))return {error:`“${old.title}”正在执行、固定或已锁定，需要先确认解除约束。`};
+    if(t.manualOrder!==old.manualOrder||t.notBefore!==old.notBefore||t.deadline!==old.deadline||t.estimateMinutes!==old.estimateMinutes)changed.push(t.id);
   }
-  occupied.sort((a, b) => a.start - b.start);
-  for (let i = 1; i < occupied.length; i++) {
-    if (occupied[i].start < occupied[i - 1].start + occupied[i - 1].minutes * 60000) {
-      return { error: `“${occupied[i - 1].task.title}”与“${occupied[i].task.title}”时间冲突，请调整其中一项。` };
-    }
-  }
-  const tasks = planTasks(proposed, now);
-  const original = new Map(before.map((task) => [task.id, task]));
-  const changes = tasks.filter((task) => original.has(task.id) && original.get(task.id).scheduledAt !== task.scheduledAt)
-    .map((task) => ({ task, from: original.get(task.id).scheduledAt, to: task.scheduledAt }));
-  return { tasks, changes };
+  const tasks=planTasks(proposed,now,{...options,replanIds:options.replanIds||changed});
+  const occupied=tasks.filter((t)=>t.status==='pending'&&t.scheduledAt&&(isProtected(t)||t.manualAt)).map((t)=>({t,a:new Date(t.scheduledAt).getTime(),b:new Date(t.scheduledEndAt).getTime()})).filter((x)=>x.b>now.getTime());
+  for(let i=0;i<occupied.length;i++)for(let j=i+1;j<occupied.length;j++)if(overlap(occupied[i].a,occupied[i].b,occupied[j].a,occupied[j].b))return {error:`“${occupied[i].t.title}”与“${occupied[j].t.title}”时间冲突，请调整其中一项。`};
+  for(const x of occupied)if(x.t.deadline&&x.b>new Date(x.t.deadline).getTime())return {error:`“${x.t.title}”的执行结束超过硬截止。`};
+  const changes=tasks.filter((t)=>{const old=original.get(t.id);return old&&(old.scheduledAt!==t.scheduledAt||old.scheduledEndAt!==t.scheduledEndAt||old.plannedMinutes!==t.plannedMinutes);}).map((task)=>({task,from:original.get(task.id).scheduledAt,to:task.scheduledAt,fromEnd:original.get(task.id).scheduledEndAt,toEnd:task.scheduledEndAt}));
+  return {tasks,changes};
 }
 
 export function formatDateTime(value, options = {}) {

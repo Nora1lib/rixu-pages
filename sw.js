@@ -1,5 +1,5 @@
-const CACHE = "rixu-static-v24";
-const FILES = ["./", "./index.html", "./widget.html", "./widget.css", "./widget-runtime.js", "./styles.css", "./app.js", "./schedule-controls.css", "./schedule-controls.js", "./schedule-lifecycle.js", "./planner.js", "./deepseek.js", "./manifest.webmanifest", "./assets/day-landscape.png", "./assets/night-landscape.png", "./assets/adventure-camp-night.png", "./assets/pixel-panel-frame.png", "./assets/quest-mountain-flag.png", "./assets/zlabs-pixel-cn.woff2"];
+const CACHE = "rixu-static-v30";
+const FILES = ["./", "./index.html", "./widget.html", "./widget.css", "./widget-runtime.js", "./styles.css", "./app.js", "./schedule-controls.css", "./schedule-controls.js", "./schedule-lifecycle.js", "./schedule-domain.js", "./plan-store.js", "./capture-flow.js", "./schedule-ui.js", "./reminder-controller.js", "./plan-settings.js", "./planner.js", "./deepseek.js", "./manifest.webmanifest", "./assets/day-landscape.png", "./assets/night-landscape.png", "./assets/adventure-camp-night.png", "./assets/pixel-panel-frame.png", "./assets/quest-mountain-flag.png", "./assets/zlabs-pixel-cn.woff2"];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(FILES)));
   self.skipWaiting();

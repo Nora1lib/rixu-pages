@@ -1,40 +1,24 @@
-export function scheduleStart(task) {
-  const value = task.kind === "event" ? task.fixedAt || task.scheduledAt : task.scheduledAt;
-  const time = value ? new Date(value).getTime() : NaN;
-  return Number.isFinite(time) ? time : null;
-}
-
+import { currentSession, isDaily, stamp } from './schedule-domain.js';
+export function scheduleStart(task) { const value=currentSession(task)?.plannedStart || task.scheduledAt || task.fixedAt; return value ? new Date(value).getTime() : null; }
 export function scheduleEnd(task) {
-  const start = scheduleStart(task);
-  if (task.kind === "event") return start === null ? null : start + (Number(task.estimateMinutes) || 45) * 60000;
-  if (task.deadline) {
-    const deadline = new Date(task.deadline).getTime();
-    if (Number.isFinite(deadline)) return deadline;
+  const value=currentSession(task)?.plannedEnd||task.scheduledEndAt;
+  if(value)return new Date(value).getTime();
+  const start=scheduleStart(task);return start===null?null:start+(Number(task.plannedMinutes)||Number(task.estimateMinutes)||45)*60000;
+}
+export const scheduleEndLabel=(task)=>task.kind==='event'?'结束':'本段结束';
+export function reminderEvents(tasks, preferences = {}, now = Date.now()) {
+  const events=[];
+  for(const task of tasks){
+    if(task.status!=='pending'||isDaily(task))continue;
+    const start=scheduleStart(task),end=scheduleEnd(task),deadline=stamp(task.deadline),session=currentSession(task);
+    const add=(kind,time,lead)=>{if(!Number.isFinite(time))return; const key=`${task.id}:${kind==='deadline'?'task':session?.id||'task'}:${kind}:${time}`;events.push({task,kind,time,triggerAt:time-lead*60000,key});};
+    if(!task.actualStartAt)add('start',start,Number(preferences.startLead??15));
+    add('end',end,Number(preferences.endLead??10));
+    if(deadline)add('deadline',new Date(deadline).getTime(),Number(preferences.deadlineLead??Math.max(60,Math.min(Number(task.remainingMinutes)||60,1440))));
   }
-  return start === null ? null : start + (Number(task.plannedMinutes) || Number(task.estimateMinutes) || 45) * 60000;
+  return events.sort((a,b)=>a.triggerAt-b.triggerAt);
 }
-
-export function scheduleEndLabel(task) {
-  return task.kind === "event" ? "结束" : task.deadline ? "截止" : "本段结束";
+export function nextScheduleReminder(tasks, seen, now = Date.now(), preferences={}) {
+  return reminderEvents(tasks,preferences,now).filter((e)=>!seen.has(e.key)&&e.triggerAt<=now&&e.time>=now-5*60000).map((e)=>({...e,minutes:(e.time-now)/60000}))[0]||null;
 }
-
-export function nextScheduleReminder(tasks, seen, now = Date.now()) {
-  const candidates = [];
-  for (const task of tasks) {
-    if (task.status !== "pending" || task.questType === "daily") continue;
-    const start = scheduleStart(task);
-    const end = scheduleEnd(task);
-    if (start !== null) {
-      const lead = task.priority === "high" ? 60 : 15;
-      const minutes = (start - now) / 60000;
-      const key = `${task.id}:start:${start}`;
-      if (minutes >= 0 && minutes <= lead && !seen.has(key)) candidates.push({ task, kind: "start", minutes, key });
-    }
-    if (end !== null && end > (start ?? -Infinity)) {
-      const minutes = (end - now) / 60000;
-      const key = `${task.id}:end:${end}`;
-      if (minutes >= -5 && minutes <= 10 && !seen.has(key)) candidates.push({ task, kind: "end", minutes, key });
-    }
-  }
-  return candidates.sort((a, b) => (a.minutes < 0 ? 0 : a.minutes) - (b.minutes < 0 ? 0 : b.minutes) || (a.kind === "end" ? 0 : 1) - (b.kind === "end" ? 0 : 1))[0] || null;
-}
+export function reminderTitle(kind) {return kind==='start'?'日程即将开始':kind==='deadline'?'任务即将截止':'本段时间即将结束';}

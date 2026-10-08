@@ -8,9 +8,9 @@
   <title>时序 · 今日冒险</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230b2545'/%3E%3Cpath d='M8 48 26 19l10 15 7-9 13 23Z' fill='%23f6cf75' stroke='%23fff8e7' stroke-width='3'/%3E%3Cpath d='M8 51h48' stroke='%23fff8e7' stroke-width='4'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./styles.css?v=24">
-  <link rel="stylesheet" href="./schedule-controls.css?v=24">
-  <script type="module" src="./app.js?v=24"></script>
+  <link rel="stylesheet" href="./styles.css?v=30">
+  <link rel="stylesheet" href="./schedule-controls.css?v=30">
+  <script type="module" src="./app.js?v=30"></script>
 </head>
 <body>
   <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -47,7 +47,7 @@
       <section class="schedule-card paper-frame" id="schedule" aria-labelledby="scheduleTitle">
         <div class="section-head schedule-head"><div class="section-title"><svg aria-hidden="true"><use href="#i-calendar"/></svg><h2 id="scheduleTitle">今天与未来 72 小时</h2></div><button id="workSummary" class="work-summary" type="button" aria-label="查看今日预计工作时间与忙碌度"></button></div>
         <p class="schedule-hint">拖动 ⋮⋮ 调整先后顺序，点“调整”修改时间；确认前会预览受影响的日程。</p>
-        <div id="scheduleList" class="schedule-list"></div><div id="dailyList" class="daily-list"></div>
+        <label class="timeline-expand"><input id="expand72h" type="checkbox">展开未来72小时</label><div id="scheduleList" class="schedule-list"></div><div id="dailyList" class="daily-list"></div>
         <button id="scheduleMoreButton" class="section-link" type="button">查看完整日程 <span aria-hidden="true">›</span></button>
       </section>
       <button id="journeyShortcut" class="journey-shortcut" type="button">⛰️ 查看长期旅程 <span aria-hidden="true">›</span></button>
@@ -56,12 +56,12 @@
       </section>
       <section class="tasks-card paper-frame" id="inbox" aria-labelledby="taskTitle">
         <div class="section-head"><div class="section-title"><svg aria-hidden="true"><use href="#i-box"/></svg><h2 id="taskTitle">收纳箱</h2></div><span id="taskCount" class="count-pill">0 项</span></div>
-        <p class="section-description">所有已确认的事项都在这里，可修改、顺延或删除。</p>
+        <p class="section-description">未安排事项、未确认输入和过期事项可在这里继续整理或直接删除。</p>
         <div id="taskList" class="task-list"></div>
         <div class="inbox-subsection"><h3>稍后整理</h3><div id="deferredList"></div></div>
-        <div class="inbox-subsection"><h3>过时奇遇 · 回顾</h3><div id="expiredList"></div></div>
+        <div class="inbox-subsection"><h3>已过期 · 待处理</h3><div id="expiredList"></div></div>
         <details class="inbox-subsection"><summary>已完成事项</summary><div id="completedList"></div></details>
-        <button id="restoreButton" class="section-link" type="button" hidden>撤销上一步</button>
+        <button id="restoreButton" class="section-link" type="button">撤销上一步</button>
       </section>
     </main>
     <footer class="page-footer">计划只保存在这台设备上 · 时序 · <a href="./travel/" style="color:inherit;text-decoration:underline">旅行计划 ↗</a></footer>
@@ -95,25 +95,13 @@
       <button class="gold-button form-submit" type="submit">加入旅程</button>
     </form>
   </dialog>
-  <dialog id="taskEditDialog" class="settings-dialog" aria-labelledby="taskEditTitle">
-    <form id="taskEditForm" class="settings-content"><div class="section-head"><h2 id="taskEditTitle">修改事项</h2><button class="icon-button dialog-close" type="button" aria-label="关闭">×</button></div>
-      <label class="form-field">名称<input id="editTitle" type="text" maxlength="180" required></label>
-      <label class="form-field">安排方式<select id="editKind"><option value="task">可调整任务</option><option value="event">固定事项</option></select></label>
-      <label class="form-field">任务类型<select id="editQuestType"><option value="adventure">奇遇任务</option><option value="normal">短期任务</option><option value="main">主线</option><option value="side">支线</option><option value="daily">每日任务</option></select></label>
-      <label class="form-field">所属旅程<input id="editJourneyName" type="text" maxlength="80" list="journeyOptions" placeholder="主线或支线填写旅程名称"></label>
-      <datalist id="journeyOptions"></datalist>
-      <label class="form-field">优先级<select id="editPriority"><option value="auto">自动判断</option><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label>
-      <label class="form-field">截止或固定时间<input id="editTime" type="datetime-local"></label>
-      <label class="form-field">预计分钟<input id="editMinutes" type="number" min="10" max="480" step="5"></label>
-      <button class="gold-button form-submit" type="submit">保存修改</button>
-    </form>
-  </dialog>
+
   <dialog id="focusDialog" class="settings-dialog" aria-labelledby="focusTitle"><div class="settings-content focus-content"><div class="section-head"><h2 id="focusTitle">开始这一段</h2><button class="icon-button dialog-close" type="button" aria-label="关闭">×</button></div><p id="focusTaskTitle" class="focus-task-title"></p><div id="focusClock" class="focus-clock" aria-live="off">00:00</div><p class="section-description">专注结束后再标记完成；中途离开也不会自动算作完成。</p><div class="focus-actions"><button id="focusToggleButton" class="gold-button" type="button">开始计时</button><button id="focusCompleteButton" class="light-button" type="button">完成这一段</button></div></div></dialog>
   <dialog id="busyDialog" class="settings-dialog" aria-labelledby="busyTitle"><div class="settings-content"><div class="section-head"><h2 id="busyTitle">今日忙碌度</h2><button class="icon-button dialog-close" type="button" aria-label="关闭">×</button></div><p id="busyExplanation" class="section-description"></p></div></dialog>
   <dialog id="settingsDialog" class="settings-dialog" aria-labelledby="settingsTitle">
     <form method="dialog" class="settings-content"><div class="section-head"><h2 id="settingsTitle">设置与数据</h2><button class="icon-button" value="cancel" aria-label="关闭设置">×</button></div>
       <label class="setting-row"><span><strong>背景时间</strong><small>跟随当前时间，或手动选择远足与扎营。</small></span><select id="themeSelect"><option value="auto">自动切换</option><option value="day">白天 · 远足</option><option value="night">夜间 · 扎营</option></select></label>
-      <label class="setting-row"><span><strong>临期提醒</strong><small>页面打开时显示柔和提示；重要事项会更早提醒。</small></span><input id="reminderToggle" type="checkbox" checked></label>
+      <label class="setting-row"><span><strong>临期提醒</strong><small>页面可见时显示提示；Mac 收起后需新版应用及系统通知权限。</small></span><input id="reminderToggle" type="checkbox" checked></label>
       <label class="setting-row"><span><strong>提醒方式</strong><small>声音需要手动开启，受手机浏览器播放限制。</small></span><select id="reminderMode"><option value="visual">渐入提示</option><option value="sound">渐入提示＋轻音</option></select></label>
       <div class="ai-setting"><strong>智能识别</strong><p>整理时只发送本次输入与设备时间，用来归纳任务、识别日期和时长。个人任务仍保存在本机；服务暂不可用时会自动使用本地规则。</p></div>
       <div class="settings-buttons"><button id="exportButton" class="light-button" type="button">导出数据</button><label class="light-button import-label">导入数据<input id="importInput" type="file" accept="application/json,.json" hidden></label></div>
@@ -123,7 +111,7 @@
     </form>
   </dialog>
   <dialog id="changesDialog" class="settings-dialog" aria-labelledby="changesTitle"><div class="settings-content"><h2 id="changesTitle">这些安排会调整</h2><p class="section-description">请确认变更；加入后仍可撤销。</p><ul id="changesList" class="changes-list"></ul><div class="dialog-actions"><button id="changesCancelButton" class="light-button" type="button">返回修改</button><button id="changesConfirmButton" class="gold-button" type="button">确认新计划</button></div></div></dialog>
-  <div id="reminderBanner" class="reminder-banner" role="alert" hidden><span aria-hidden="true">✦</span><div><strong id="reminderTitle"></strong><p id="reminderDetail"></p></div><button id="reminderComplete" type="button" hidden>确认完成</button><button id="reminderDismiss" type="button" aria-label="关闭提醒">×</button></div>
+  <div id="reminderBanner" class="reminder-banner" role="alert" hidden><span aria-hidden="true">✦</span><div><strong id="reminderTitle"></strong><p id="reminderDetail"></p></div><button id="reminderComplete" type="button" hidden>确认完成</button><button id="reminderSnooze" type="button">10分钟后提醒</button><button id="reminderDismiss" type="button" aria-label="关闭提醒">×</button></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 </body>
 </html>

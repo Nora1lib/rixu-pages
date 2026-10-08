@@ -2,20 +2,32 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b2545">
   <title>时序 · 桌面悬浮窗</title>
-  <link rel="stylesheet" href="./widget.css?v=24">
-  <link rel="stylesheet" href="./schedule-controls.css?v=24">
+  <link rel="stylesheet" href="./widget.css?v=30">
+  <link rel="stylesheet" href="./schedule-controls.css?v=30">
   <style>
     .timeline-row{grid-template-columns:64px minmax(0,1fr) auto;gap:5px}
     .timeline-row .schedule-row-actions{grid-column:auto;justify-self:end;margin-top:0}
     .timeline-row .schedule-row-actions button{min-height:25px;padding:2px 4px}
     .timeline-row .schedule-row-actions .schedule-drag{padding:1px 7px 1px 3px}
   </style>
-  <script type="module" src="./widget-runtime.js?v=24"></script>
+  <script type="module" src="./widget-runtime.js?v=30"></script>
 </head>
 <body data-view="today">
+  <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-mountain" viewBox="0 0 64 64"><path fill="#09254b" d="M2 51 24 14l12 19 8-11 18 29v7H2z"/><path fill="#f8d675" d="M7 51 24 21l18 30z"/><path fill="#e7f4f2" d="m24 21 6 10-7-3-5 5z"/><path fill="#5d8e78" d="M5 51h55v7H5z"/><path fill="#b96436" d="M23 10h4v14h-4z"/><path fill="#f8d675" d="M27 11h12v9H27z"/></symbol>
+    <symbol id="i-book" viewBox="0 0 32 32"><path fill="#0b2852" d="M4 3h23v26H4z"/><path fill="#f4c861" d="M8 6h17v20H8z"/><path fill="#0b2852" d="M11 10h11v2H11zm0 5h11v2H11zm0 5h8v2h-8z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 32 32"><path fill="#0b2852" d="M3 5h26v25H3z"/><path fill="#f9ecd2" d="M6 11h20v16H6z"/><path fill="#f2c262" d="M6 8h20v5H6z"/><path fill="#0b2852" d="M9 2h3v8H9zm11 0h3v8h-3zM9 16h4v4H9zm8 0h4v4h-4zM9 22h4v3H9z"/></symbol>
+    <symbol id="i-nav-calendar" viewBox="0 0 32 32"><path fill="currentColor" d="M4 5h4V2h4v3h8V2h4v3h4v24H4zm4 9v11h16V14z"/><path fill="#f4c861" d="M8 9h16v3H8zm2 8h4v4h-4zm7 0h4v4h-4z"/></symbol>
+    <symbol id="i-sprout" viewBox="0 0 32 32"><path fill="#0b2852" d="M14 17h4v11h-4z"/><path fill="#4f9874" d="M15 17C5 19 4 12 5 7c5-1 11 1 11 10zm2-1c0-9 6-12 11-10 1 6-2 12-11 10z"/><path fill="#9c6a3f" d="M5 26h23v4H5z"/></symbol>
+    <symbol id="i-home" viewBox="0 0 32 32"><path fill="currentColor" d="M13 2h6v3h4v4h4v4h3v4h-3v12H5V17H2v-4h3V9h4V5h4zM9 17v8h5v-7h4v7h5v-8z"/></symbol>
+    <symbol id="i-map" viewBox="0 0 32 32"><path fill="currentColor" d="M2 5h4v2h5V5h5v2h5V5h5v2h4v21h-4v-2h-5v2h-5v-2h-5v2H6v-2H2zm4 5v13h5V10zm10 0v13h5V10zm10 0v13h1V10z"/><path fill="#f4c861" d="M13 12h6v3h-2v5h-2v-5h-2z"/></symbol>
+    <symbol id="i-box" viewBox="0 0 32 32"><path fill="currentColor" d="M4 3h24v4h3v7h-3v14H4V14H1V7h3zm4 14v7h16v-7h-5v4h-6v-4z"/><path fill="#f4c861" d="M5 8h22v4H5z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 32 32"><path fill="currentColor" d="M12 2h8v4h4v2h4v5h3v7h-3v5h-4v2h-4v3h-8v-3H8v-2H4v-5H1v-7h3V8h4V6h4zm1 10v8h7v-8z"/><path fill="#f4c861" d="M14 13h5v6h-5z"/></symbol>
+    <symbol id="i-mango" viewBox="0 0 24 28"><path fill="#123353" d="M9 5h4l2-4 3 1-2 5c7 5 7 17-4 20C2 28-1 16 5 9z"/><path fill="currentColor" d="M9 8c-6 3-7 15 1 16 9 1 12-10 6-15-2-2-5-2-7-1z"/><path fill="#5b9c5a" d="M12 6c0-5-4-5-6-4 0 3 2 5 6 4z"/></symbol>
+  </svg>
   <div class="sky" aria-hidden="true"></div>
   <main class="widget-shell">
     <header class="widget-header">
@@ -26,7 +38,7 @@
     <section class="current-card" aria-labelledby="currentHeading">
       <span class="eyebrow">✦ 当前任务</span>
       <h1 id="currentHeading">从一件小事开始</h1>
-      <p id="currentMeta">写下一件想推进的事。</p>
+      <p id="currentMeta">写下一件想推进的事。</p><div class="current-actions"><button id="widgetCurrentStart" type="button">开始这一段</button><button id="widgetCurrentComplete" type="button">确认进度</button></div>
     </section>
     <form id="quickForm" class="quick-card">
       <label for="quickInput">✎ 快速录入</label>
@@ -35,7 +47,7 @@
     </form>
     <section class="timeline-card" aria-labelledby="timelineHeading">
       <div class="timeline-head"><h2 id="timelineHeading">未来 72 小时</h2><span id="timelineCount">0 项</span></div>
-      <p class="schedule-hint">拖动 ⋮⋮ 调整顺序 · 点“调整”修改时间</p>
+      <div id="widgetWorkSummary" class="work-summary"></div><label class="timeline-expand"><input id="widgetExpand72h" type="checkbox">展开未来72小时</label><p class="schedule-hint">拖动 ⋮⋮ 调整顺序 · 点“调整”修改时间</p>
       <div id="timelineList" class="timeline-list"></div>
     </section>
     <section id="journeyView" class="widget-page" aria-labelledby="journeyHeading">
@@ -43,7 +55,7 @@
       <form id="widgetJourneyForm" class="widget-inline-form"><input name="title" maxlength="80" placeholder="新旅程名称" required><select name="kind"><option value="main">主线</option><option value="side">支线</option></select><button>新建</button></form>
     </section>
     <section id="inboxView" class="widget-page" aria-labelledby="inboxHeading">
-      <h2 id="inboxHeading">收纳箱</h2><div id="widgetInbox"></div>
+      <h2 id="inboxHeading">收纳箱</h2><button id="widgetUndo" type="button">撤销上一步</button><div id="widgetInbox"></div>
     </section>
     <section id="settingsView" class="widget-page" aria-labelledby="settingsHeading">
       <h2 id="settingsHeading">设置</h2>
@@ -54,13 +66,13 @@
     </section>
   </main>
   <nav class="widget-nav" aria-label="悬浮窗页面">
-    <button type="button" data-widget-view="today" aria-current="page"><span aria-hidden="true">⌂</span>今日</button>
-    <button type="button" data-widget-view="journey"><span aria-hidden="true">⚑</span>旅程</button>
-    <button type="button" data-widget-view="schedule"><span aria-hidden="true">▦</span>日程</button>
-    <button type="button" data-widget-view="inbox"><span aria-hidden="true">▣</span>收纳箱</button>
-    <button type="button" data-widget-view="settings"><span aria-hidden="true">⚙</span>设置</button>
+    <button type="button" data-widget-view="today" aria-current="page"><svg aria-hidden="true"><use href="#i-home"/></svg>今日</button>
+    <button type="button" data-widget-view="journey"><svg aria-hidden="true"><use href="#i-map"/></svg>旅程</button>
+    <button type="button" data-widget-view="schedule"><svg aria-hidden="true"><use href="#i-nav-calendar"/></svg>日程</button>
+    <button type="button" data-widget-view="inbox"><svg aria-hidden="true"><use href="#i-box"/></svg>收纳箱</button>
+    <button type="button" data-widget-view="settings"><svg aria-hidden="true"><use href="#i-settings"/></svg>设置</button>
   </nav>
-  <div id="widgetReminder" class="widget-reminder" role="alert" hidden><strong id="widgetReminderTitle"></strong><span id="widgetReminderText"></span><button id="widgetReminderComplete" type="button" hidden>确认完成</button><button id="widgetReminderDismiss" type="button" aria-label="关闭提醒">×</button></div>
+  <div id="widgetReminder" class="widget-reminder" role="alert" hidden><strong id="widgetReminderTitle"></strong><span id="widgetReminderText"></span><button id="widgetReminderComplete" type="button" hidden>确认完成</button><button id="widgetReminderSnooze" type="button">稍后提醒</button><button id="widgetReminderDismiss" type="button" aria-label="关闭提醒">×</button></div>
   <dialog id="widgetDeleteDialog" aria-labelledby="widgetDeleteTitle"><div class="review-shell"><h2 id="widgetDeleteTitle">确认删除</h2><p id="widgetDeleteText"></p><div class="review-actions"><button id="widgetDeleteCancel" type="button">取消</button><button id="widgetDeleteConfirm" type="button">删除</button></div></div></dialog>
   <dialog id="reviewDialog" aria-labelledby="reviewHeading">
     <div class="review-shell">
@@ -69,7 +81,7 @@
       <div id="draftList"></div>
       <div class="plan-box"><strong>时间轴预览</strong><div id="planPreview"></div></div>
       <p id="reviewMessage" role="alert"></p>
-      <div class="review-actions"><button id="confirmButton" type="button">确认并入列</button><button id="cancelButton" type="button">继续修改输入</button></div>
+      <div class="review-actions"><button id="confirmButton" type="button">确认并入列</button><button id="cancelButton" type="button">先放一放</button><button id="widgetDeleteCapture" type="button">删除输入</button></div>
     </div>
   </dialog>
 </body>
